@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>鬍鬚張-月考核表</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    .brand-bg { background-color: #E05315; }
+    .brand-text { color: #E05315; }
+    .brand-border { border-color: #E05315; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+  <!-- 1. 登入畫面 -->
+  <div id="login-container" class="flex flex-col items-center justify-center min-h-screen px-4">
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-8 brand-border">
+      <div class="text-center mb-6">
+        <h1 class="text-2xl font-black text-gray-800 tracking-wider">鬍鬚張 FORMOSA CHANG</h1>
+        <p class="text-gray-500 mt-1 font-medium">代理店副理月考核系統</p>
+      </div>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">員工工號</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+              <i class="fa-solid fa-user"></i>
+            </span>
+            <input type="text" id="emp-id" placeholder="請輸入工號 (例：00888)" class="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-lg">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">密碼 (身分證後 4 碼)</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+              <i class="fa-solid fa-lock"></i>
+            </span>
+            <input type="password" id="id-tail" placeholder="請輸入身分證後 4 碼" class="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-lg">
+          </div>
+        </div>
+
+        <button onclick="handleLogin()" id="btn-login" class="w-full brand-bg text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:bg-orange-700 transition duration-200 text-lg">
+          <i class="fa-solid fa-right-to-bracket mr-2"></i>登入系統
+        </button>
+        <p id="login-error" class="text-red-500 text-center font-bold mt-2 hidden"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 店長填寫考核表主畫面 -->
+  <div id="app-container" class="hidden pb-12">
+    <header class="brand-bg text-white py-4 px-6 shadow-md flex justify-between items-center sticky top-0 z-50">
+      <div>
+        <h2 class="text-lg font-black tracking-wide">代理店副理月考核表</h2>
+        <p class="text-xs opacity-90">表單編號：G-18-01-06-03</p>
+      </div>
+      <div class="text-right">
+        <span id="user-info" class="font-bold text-sm block">載入中...</span>
+        <button onclick="logout()" class="text-xs bg-black bg-opacity-30 px-2 py-1 rounded hover:bg-opacity-50 mt-1">登出</button>
+      </div>
+    </header>
+
+    <div class="max-w-xl mx-auto px-4 mt-6">
+      <div class="bg-white rounded-2xl shadow-md p-6 space-y-6">
+        
+        <!-- 選擇學員 -->
+        <div>
+          <label class="block text-sm font-black text-gray-700 mb-2">
+            <i class="fa-solid fa-user-check brand-text mr-1"></i> 請選擇受評儲備幹部：
+          </label>
+          <select id="underling-select" onchange="onUnderlingChange()" class="w-full p-3 border-2 brand-border rounded-xl focus:outline-none text-lg font-bold bg-white">
+            <option value="">-- 請選擇店內學員 --</option>
+          </select>
+        </div>
+
+        <!-- 表頭資訊卡片 -->
+        <div id="info-card-container" class="hidden bg-orange-50 border-2 border-orange-200 rounded-xl p-4 text-sm space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <div><span class="font-bold text-gray-500">姓名：</span><span id="info-name" class="font-black text-gray-800">-</span></div>
+            <div><span class="font-bold text-gray-500">單位/轄區：</span><span id="info-store" class="font-black text-gray-800">-</span></div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div><span class="font-bold text-gray-500">轉任日：</span><span id="info-transfer" class="font-black text-gray-800">-</span></div>
+            <div><span class="font-bold text-gray-500 text-orange-600">評核日(今天)：</span><span id="info-eval-date" class="font-black text-orange-600">-</span></div>
+          </div>
+        </div>
+
+        <hr class="border-dashed border-gray-300">
+
+        <!-- 6大指標 -->
+        <h3 class="text-base font-black text-gray-800 border-l-4 brand-border pl-2">訓練單位主管每月填寫 (每項 10%)</h3>
+        <div class="space-y-6" id="score-section"></div>
+
+        <!-- 綜合評語 -->
+        <div>
+          <label class="block text-sm font-black text-gray-700 mb-2">
+            <i class="fa-solid fa-comment-dots brand-text mr-1"></i> 店經理評語：
+          </label>
+          <textarea id="manager-comment" rows="4" placeholder="請填寫對該學員本月的具體表現評價..." class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-base"></textarea>
+        </div>
+
+        <button onclick="submitForm()" id="btn-submit" class="w-full brand-bg text-white font-bold py-4 rounded-xl shadow-lg text-lg hover:bg-orange-700 transition">
+          <i class="fa-solid fa-paper-plane mr-2"></i>送出考核表
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 自訂確認彈窗 -->
+  <div id="custom-confirm-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden px-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm border-t-8 brand-border overflow-hidden">
+      <div class="p-6 text-center">
+        <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fa-solid fa-triangle-exclamation text-3xl brand-text"></i>
+        </div>
+        <h3 class="text-xl font-black text-gray-800 mb-2">確定送出考核嗎？</h3>
+        <p id="confirm-modal-text" class="text-gray-600 text-sm mb-6">確定要送出考核嗎？送出後店長將無法再修改分數！</p>
+        <div class="flex gap-3">
+          <button onclick="closeConfirmModal()" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition">取消</button>
+          <button onclick="executeSubmit()" class="flex-1 py-3 brand-bg hover:bg-orange-700 text-white font-bold rounded-xl shadow-md transition">確定送出</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading-spinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white p-6 rounded-2xl flex flex-col items-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-4 brand-border border-gray-200"></div>
+      <p class="mt-3 font-bold text-gray-700 text-sm">處理中，請稍候...</p>
+    </div>
+  </div>
+
+  <script>
+    // 【在這裡貼上你複製的 Google Apps Script 正式網址 (/exec 結尾)】
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbysdFVEq81YuSme1wp72i_MePw2P2TkGPysYJ1gJEvC-58DTuzCkyZbwMddqjiBMTuJ/exec";
+
+    const metrics = [
+      {
+        id: 1,
+        title: "責任感",
+        ranges: [
+          { label: "8 ~ 10 分", min: 8, max: 10, text: "責任感相當強,可以充分信賴,無須任何督促。" },
+          { label: "6 ~ 7 分", min: 6, max: 7, text: "可獨自負責,處事穩健,須偶爾督促。" },
+          { label: "3 ~ 5 分", min: 3, max: 5, text: "可以信賴,但須略加督促。" },
+          { label: "1 ~ 2 分", min: 1, max: 2, text: "處事被動,不積極,必須有人經常加以督促。" }
+        ]
+      },
+      {
+        id: 2,
+        title: "協調性",
+        ranges: [
+          { label: "8 ~ 10 分", min: 8, max: 10, text: "能主動與人協調與上級員維持和諧關係,同事極願與其合作。" },
+          { label: "6 ~ 7 分", min: 6, max: 7, text: "能與人和諧相處,願接納他人意見而不固執,偶亦屬熱心助人。" },
+          { label: "3 ~ 5 分", min: 3, max: 5, text: "雖不特別致力於他人協調,但亦不與他人發生爭執與摩擦。" },
+          { label: "1 ~ 2 分", min: 1, max: 2, text: "缺乏協調與同事間偶爾會摩擦。" }
+        ]
+      },
+      {
+        id: 3,
+        title: "表達能力",
+        ranges: [
+          { label: "8 ~ 10 分", min: 8, max: 10, text: "文筆、言談、論理明確,能化繁為簡,密而不漏。" },
+          { label: "6 ~ 7 分", min: 6, max: 7, text: "表達有條理,使人易於了解。" },
+          { label: "3 ~ 5 分", min: 3, max: 5, text: "表達平平,大致可了解其意,不致引人誤解。" },
+          { label: "1 ~ 2 分", min: 1, max: 2, text: "文筆生硬言談欠明確不易讓人了解。" }
+        ]
+      },
+      {
+        id: 4,
+        title: "學習態度",
+        ranges: [
+          { label: "8 ~ 10 分", min: 8, max: 10, text: "針對突發狀況,能主動積極提出疑問虛心求救。" },
+          { label: "6 ~ 7 分", min: 6, max: 7, text: "能誠懇接受他人教導,但主動較弱。" },
+          { label: "3 ~ 5 分", min: 3, max: 5, text: "能誠懇接受他人教導,但主動較弱。" },
+          { label: "1 ~ 2 分", min: 1, max: 2, text: "不能主動學習,須加以督導。" }
+        ]
+      },
+      {
+        id: 5,
+        title: "解決問題能力",
+        ranges: [
+          { label: "8 ~ 10 分", min: 8, max: 10, text: "針對可能發生之問題,極求解,並予以解決。能迅速謀求改善對策,需督促即可完成。" },
+          { label: "6 ~ 7 分", min: 6, max: 7, text: "具有解決問題之能力,但須督促完成。" },
+          { label: "3 ~ 5 分", min: 3, max: 5, text: "能謀求改善之道,但無擔當之魄力。" },
+          { label: "1 ~ 2 分", min: 1, max: 2, text: "無法迅速謀求改善對策,並有逃避之現象。" }
+        ]
+      },
+      {
+        id: 6,
+        title: "個人儀容",
+        ranges: [
+          { label: "8 ~ 10 分", min: 8, max: 10, text: "整齊清潔,端正足為模範。" },
+          { label: "6 ~ 7 分", min: 6, max: 7, text: "重視清潔衛生。" },
+          { label: "3 ~ 5 分", min: 3, max: 5, text: "達到基本要求。" },
+          { label: "1 ~ 2 分", min: 1, max: 2, text: "我行我素,須經常糾正才會改進。" }
+        ]
+      }
+    ];
+
+    let currentUser = null;
+    let subordinateCache = []; 
+    let activeRanges = {};     
+    let selectedScores = {};   
+    let pendingPayload = null; 
+
+    window.onload = function() {
+      renderMetrics();
+    };
+
+    function renderMetrics() {
+      const section = document.getElementById('score-section');
+      section.innerHTML = '';
+      
+      metrics.forEach(m => {
+        let rangesHTML = '';
+        m.ranges.forEach(r => {
+          let scoreButtons = '';
+          for(let s = r.min; s <= r.max; s++) {
+            scoreButtons += `
+              <button type="button" 
+                      onclick="selectExactScore(event, ${m.id}, ${s}, ${r.min}, ${r.max})" 
+                      id="btn-score-${m.id}-${s}" 
+                      class="px-4 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-bold text-gray-700 hover:border-orange-500 transition">
+                ${s}分
+              </button>
+            `;
+          }
+          
+          rangesHTML += `
+            <div id="range-card-${m.id}-${r.min}-${r.max}" 
+                 onclick="clickRangeCard(${m.id}, ${r.min}, ${r.max})" 
+                 class="p-3 border border-gray-200 rounded-xl bg-white cursor-pointer hover:bg-orange-50/50 hover:border-orange-300 transition duration-150">
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-xs font-black text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">${r.label}</span>
+                <span id="check-icon-${m.id}-${r.min}-${r.max}" class="text-orange-500 hidden"><i class="fa-solid fa-circle-check"></i></span>
+              </div>
+              <p class="text-xs text-gray-700 font-medium mb-3">${r.text}</p>
+              <div class="flex flex-wrap gap-2">
+                ${scoreButtons}
+              </div>
+            </div>
+          `;
+        });
+        
+        const card = `
+          <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+            <div class="flex justify-between items-center border-b pb-2">
+              <span class="font-black text-gray-800 text-base flex items-center">
+                <span class="w-1.5 h-5 brand-bg mr-2 rounded-full"></span>
+                ${m.id}. ${m.title}
+              </span>
+              <span id="final-badge-${m.id}" class="text-xs font-black bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">未評分</span>
+            </div>
+            <div class="grid grid-cols-1 gap-3">
+              ${rangesHTML}
+            </div>
+          </div>
+        `;
+        section.innerHTML += card;
+      });
+    }
+
+    function selectExactScore(event, metricId, score, min, max) {
+      if(event) event.stopPropagation();
+      
+      const prevScore = selectedScores[metricId];
+      if (prevScore) {
+        const prevBtn = document.getElementById(`btn-score-${metricId}-${prevScore}`);
+        if (prevBtn) prevBtn.className = "px-4 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-bold text-gray-700 hover:border-orange-500 transition";
+      }
+      
+      if (activeRanges[metricId]) {
+        const prevKey = activeRanges[metricId];
+        const prevCard = document.getElementById(`range-card-${metricId}-${prevKey}`);
+        if (prevCard) prevCard.className = "p-3 border border-gray-200 rounded-xl bg-white cursor-pointer hover:bg-orange-50/50 hover:border-orange-300 transition duration-150";
+        const prevCheck = document.getElementById(`check-icon-${metricId}-${prevKey}`);
+        if (prevCheck) prevCheck.classList.add('hidden');
+      }
+      
+      const key = `${min}-${max}`;
+      const currentCard = document.getElementById(`range-card-${metricId}-${key}`);
+      if (currentCard) currentCard.className = "p-3 border-2 border-orange-500 rounded-xl bg-orange-50/50 cursor-pointer ring-2 ring-orange-200 transition duration-150";
+      const currentCheck = document.getElementById(`check-icon-${metricId}-${key}`);
+      if (currentCheck) currentCheck.classList.remove('hidden');
+      
+      const btn = document.getElementById(`btn-score-${metricId}-${score}`);
+      if (btn) btn.className = "px-4 py-1.5 brand-bg text-white border-transparent rounded-full text-xs font-bold shadow-md transition";
+      
+      selectedScores[metricId] = score;
+      activeRanges[metricId] = key;
+      
+      const badge = document.getElementById(`final-badge-${metricId}`);
+      badge.innerText = `${score} 分`;
+      badge.className = "text-xs font-black brand-bg text-white px-2.5 py-1 rounded-full shadow-sm";
+    }
+
+    function clickRangeCard(metricId, min, max) {
+      selectExactScore(null, metricId, max, min, max);
+    }
+
+    // 通用呼叫 API 工具 (核心：不經過 Google 登入驗證)
+    function callAPI(action, data, successCallback, errorCallback) {
+      const payload = Object.assign({ action: action }, data);
+      
+      // 使用 text/plain 避免觸發 CORS Preflight (最安全穩健的做法)
+      fetch(GAS_API_URL, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(resData => successCallback(resData))
+      .catch(err => {
+        if(errorCallback) errorCallback(err);
+        else {
+          showLoading(false);
+          alert("系統連線異常，請稍後再試！");
+        }
+      });
+    }
+
+    // 處理登入
+    function handleLogin() {
+      const empId = document.getElementById('emp-id').value.trim();
+      const idTail = document.getElementById('id-tail').value.trim();
+      const errorEl = document.getElementById('login-error');
+      
+      if(!empId || !idTail) {
+        errorEl.innerText = "請輸入工號與密碼！";
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      
+      showLoading(true);
+      errorEl.classList.add('hidden');
+      
+      callAPI("login", { empId: empId, idTail: idTail }, function(result) {
+        showLoading(false);
+        if(result.success) {
+          currentUser = result;
+          document.getElementById('login-container').classList.add('hidden');
+          document.getElementById('app-container').classList.remove('hidden');
+          document.getElementById('user-info').innerText = `${result.name} (${result.title}) / ${result.store}`;
+          loadUnderlings(result.store);
+        } else {
+          errorEl.innerText = result.message;
+          errorEl.classList.remove('hidden');
+        }
+      });
+    }
+
+    function loadUnderlings(store) {
+      callAPI("getUnderlings", { store: store }, function(list) {
+        subordinateCache = list;
+        const select = document.getElementById('underling-select');
+        select.innerHTML = '<option value="">-- 請選擇店內學員 --</option>';
+        list.forEach(u => {
+          select.innerHTML += `<option value="${u.empId}">${u.name} (${u.empId})</option>`;
+        });
+      });
+    }
+
+    function onUnderlingChange() {
+      const select = document.getElementById('underling-select');
+      const selectedId = select.value;
+      const infoCard = document.getElementById('info-card-container');
+      
+      if (selectedId) {
+        const sub = subordinateCache.find(u => u.empId === selectedId);
+        if (sub) {
+          document.getElementById('info-name').innerText = sub.name;
+          document.getElementById('info-store').innerText = `${sub.area} / ${sub.store}`;
+          document.getElementById('info-transfer').innerText = sub.transferDate || "-";
+          document.getElementById('info-eval-date').innerText = getMinguoToday();
+          infoCard.classList.remove('hidden');
+          return;
+        }
+      }
+      infoCard.classList.add('hidden');
+    }
+
+    function getMinguoToday() {
+      const today = new Date();
+      const yy = today.getFullYear() - 1911;
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      return `${yy}/${mm}/${dd}`;
+    }
+
+    function submitForm() {
+      const underlingSelect = document.getElementById('underling-select');
+      const underlingId = underlingSelect.value;
+      const underlingName = document.getElementById('info-name').innerText;
+      const comment = document.getElementById('manager-comment').value.trim();
+      
+      if(!underlingId) {
+        alert("請先選擇要考核的學員！");
+        return;
+      }
+      
+      for(let i=1; i<=6; i++) {
+        if(!selectedScores[i]) {
+          alert(`請為第 ${i} 項「${metrics[i-1].title}」給予確切評分！`);
+          return;
+        }
+      }
+      
+      if(!comment) {
+        alert("請填寫店經理評語！");
+        return;
+      }
+      
+      pendingPayload = {
+        managerId: currentUser.empId,
+        store: currentUser.store,
+        underlingId: underlingId,
+        underlingName: underlingName,
+        score1: selectedScores[1],
+        score2: selectedScores[2],
+        score3: selectedScores[3],
+        score4: selectedScores[4],
+        score5: selectedScores[5],
+        score6: selectedScores[6],
+        comment: comment,
+        evalDate: getMinguoToday()
+      };
+      
+      document.getElementById('confirm-modal-text').innerText = `確定要送出對 [ ${underlingName} ] 的本月考核嗎？送出後店長將無法再修改分數！`;
+      document.getElementById('custom-confirm-modal').classList.remove('hidden');
+    }
+
+    function closeConfirmModal() {
+      document.getElementById('custom-confirm-modal').classList.add('hidden');
+      pendingPayload = null;
+    }
+
+    function executeSubmit() {
+      if(!pendingPayload) return;
+      closeConfirmModal();
+      showLoading(true);
+      
+      callAPI("submit", { formData: pendingPayload }, function(res) {
+        showLoading(false);
+        if(res.success) {
+          alert(res.message);
+          document.getElementById('underling-select').value = '';
+          document.getElementById('manager-comment').value = '';
+          document.getElementById('info-card-container').classList.add('hidden');
+          selectedScores = {};
+          activeRanges = {};
+          renderMetrics();
+        } else {
+          alert("儲存失敗：" + res.message);
+        }
+      });
+    }
+
+    function logout() {
+      currentUser = null;
+      subordinateCache = [];
+      selectedScores = {};
+      activeRanges = {};
+      document.getElementById('app-container').classList.add('hidden');
+      document.getElementById('login-container').classList.remove('hidden');
+      document.getElementById('emp-id').value = '';
+      document.getElementById('id-tail').value = '';
+      document.getElementById('manager-comment').value = '';
+      document.getElementById('underling-select').value = '';
+      document.getElementById('info-card-container').classList.add('hidden');
+      renderMetrics();
+    }
+
+    function showLoading(show) {
+      const spinner = document.getElementById('loading-spinner');
+      if(show) spinner.classList.remove('hidden');
+      else spinner.classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
