@@ -13,7 +13,6 @@
 </head>
 <body class="bg-gray-100 min-h-screen font-sans w-full overflow-x-hidden flex flex-col items-center justify-center">
 
-  <!-- 1. 登入畫面 -->
   <div id="login-container" class="flex flex-col items-center justify-center min-h-screen w-full px-4">
     <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-8 brand-border">
       <div class="text-center mb-6">
@@ -50,7 +49,6 @@
     </div>
   </div>
 
-  <!-- 2. 店長填寫考核表主畫面 -->
   <div id="app-container" class="hidden pb-12 w-full">
     <header class="brand-bg text-white py-4 px-6 shadow-md flex justify-between items-center sticky top-0 z-50 w-full">
       <div>
@@ -66,7 +64,6 @@
     <div class="w-full max-w-6xl mx-auto px-6 mt-8">
       <div class="bg-white rounded-2xl shadow-md p-8 space-y-6">
         
-        <!-- 選擇學員 -->
         <div>
           <label class="block text-base font-black text-gray-700 mb-2">
             <i class="fa-solid fa-user-check brand-text mr-1"></i> 請選擇受評儲備幹部：
@@ -76,7 +73,6 @@
           </select>
         </div>
 
-        <!-- 表頭資訊卡片 -->
         <div id="info-card-container" class="hidden bg-orange-50 border-2 border-orange-200 rounded-xl p-5 text-base space-y-2">
           <div class="grid grid-cols-2 gap-4">
             <div><span class="font-bold text-gray-500">姓名：</span><span id="info-name" class="font-black text-gray-800">-</span></div>
@@ -88,19 +84,15 @@
           </div>
         </div>
 
-        <!-- 考評大盒子 (選人後才打開) -->
         <div id="evaluation-form-container" class="hidden space-y-8">
           <hr class="border-dashed border-gray-300">
 
-          <!-- 6大指標 (電腦端排成完美的雙排佈局) -->
           <h3 class="text-lg font-black text-gray-800 border-l-4 brand-border pl-3">訓練單位主管每月填寫 (每項 10%)</h3>
           <div class="grid grid-cols-2 gap-6" id="score-section"></div>
 
           <hr class="border-dashed border-gray-300">
 
-          <!-- 綜合評語與手寫板 (電腦版：上下橫向全幅) -->
           <div class="flex flex-col gap-6 w-full">
-            <!-- 綜合評語 -->
             <div class="w-full">
               <label class="block text-base font-black text-gray-700 mb-2">
                 <i class="fa-solid fa-comment-dots brand-text mr-1"></i> 店經理評語：
@@ -108,11 +100,10 @@
               <textarea id="manager-comment" class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-base h-36 resize-y" placeholder="請填寫對該學員本月的具體表現評價..."></textarea>
             </div>
 
-            <!-- 手寫簽名板 (滑鼠簽名) -->
             <div class="bg-gray-50 p-5 rounded-xl border border-gray-200 w-full space-y-4">
               <div class="flex justify-between items-center">
                 <label class="block text-base font-black text-gray-700">
-                  <i class="fa-solid fa-signature brand-text mr-1"></i> 店經理簽章 (請使用滑鼠於下方灰色畫布內簽名)：
+                  <i class="fa-solid fa-signature brand-text mr-1"></i> 店經理簽章 (請使用滑鼠於下方白色畫布內簽名)：
                 </label>
               </div>
               
@@ -123,7 +114,6 @@
                 </label>
               </div>
 
-              <!-- 電腦版畫布容器 (固定解析度 1000x300，滑鼠繪製順暢) -->
               <div id="canvas-wrapper" class="relative bg-white border-2 border-gray-300 rounded-xl overflow-hidden h-44 w-full">
                 <canvas id="signature-canvas" width="1000" height="300" class="w-full h-full block bg-white cursor-crosshair"></canvas>
                 <button type="button" onclick="clearSignatureCanvas()" class="absolute bottom-3 right-3 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-bold rounded-lg transition shadow-md">
@@ -142,7 +132,6 @@
     </div>
   </div>
 
-  <!-- 確認彈窗 -->
   <div id="custom-confirm-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden px-4">
     <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm border-t-8 brand-border overflow-hidden">
       <div class="p-6 text-center">
@@ -159,7 +148,6 @@
     </div>
   </div>
 
-  <!-- Loading -->
   <div id="loading-spinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] pointer-events-auto hidden">
     <div class="bg-white p-6 rounded-2xl flex flex-col items-center shadow-2xl">
       <div class="animate-spin rounded-full h-12 w-12 border-t-4 brand-border border-gray-200"></div>
@@ -168,7 +156,7 @@
   </div>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbysdFVEq81YuSme1wp72i_MePw2P2TkGPysYJ1gJEvC-58DTuzCkyZbwMddqjiBMTuJ/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyw65VvBqJydI5Tk3GmnGNU-eB0xRvYNWHpU9UzDDM81ERPT9izef5-iA-1sNBoKgP_DQ/exec";
 
     const metrics = [
       {
@@ -241,6 +229,10 @@
 
     let canvas, ctx, isDrawing = false;
     let sigCanvasInit = false;
+
+    window.onload = function() {
+      renderMetrics();
+    };
 
     function renderMetrics() {
       const section = document.getElementById('score-section');
@@ -324,16 +316,18 @@
       selectedScores[metricId] = score;
       activeRanges[metricId] = key;
       
-      const badge = document.getElementById(`final-badge-${metricId}`);
-      badge.innerText = `${score} 分`;
-      badge.className = "text-xs font-black brand-bg text-white px-2.5 py-1 rounded-full shadow-sm";
+      const badge = document.getElementById('final-badge-' + metricId);
+      if (badge) {
+        badge.innerText = `${score} 分`;
+        badge.className = "text-xs font-black brand-bg text-white px-2.5 py-1 rounded-full shadow-sm";
+      }
     }
 
     function clickRangeCard(metricId, min, max) {
       selectExactScore(null, metricId, max, min, max);
     }
 
-    // 電腦版精確座標計算 (滑鼠)
+    // 滑鼠精確座標計算
     function getCanvasCoords(e) {
       const rect = canvas.getBoundingClientRect();
       return {
@@ -351,7 +345,7 @@
       ctx.lineWidth = 4;
       ctx.lineCap = "round";
       
-      // 滑鼠畫圖 (電腦專用，不綁定觸控事件，避開所有行動端 Bug)
+      // 滑鼠簽名事件
       canvas.addEventListener('mousedown', (e) => {
         isDrawing = true;
         ctx.strokeStyle = "#333333"; ctx.lineWidth = 4; ctx.lineCap = "round";
@@ -375,6 +369,7 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
+    // 預存簽章與手寫板切換
     function toggleSignatureType() {
       const isChecked = document.getElementById('use-saved-sig').checked;
       const canvasWrapper = document.getElementById('canvas-wrapper');
@@ -394,7 +389,7 @@
       return canvas.toDataURL() === blank.toDataURL();
     }
 
-    // API 連線工具
+    // API 診斷連線工具
     function callAPI(action, data, successCallback) {
       const payload = Object.assign({ action: action }, data);
       showLoading(true); 
@@ -404,7 +399,7 @@
         body: JSON.stringify(payload)
       })
       .then(res => {
-        if (!res.ok) throw new Error("Google 伺服器連線失敗，請檢查網路！");
+        if (!res.ok) throw new Error("Google 伺服器拒連，狀態碼: " + res.status);
         return res.text();
       })
       .then(text => {
@@ -414,12 +409,16 @@
           successCallback(resData);
         } catch (jsonErr) {
           console.error("後端回應內容：", text);
-          throw new Error("伺服器傳回了無效格式資料！");
+          if (text.includes("google.com") || text.includes("Sign in")) {
+            throw new Error("【後台未開放】請前往 Google GAS 將部署設定改為「任何人 (Anyone)」可以存取。");
+          } else {
+            throw new Error("回應格式異常！");
+          }
         }
       })
       .catch(err => {
         showLoading(false); 
-        alert("❌ 連線失敗！原因：" + err.message);
+        alert("❌ 電腦版連線失敗！\n\n【原因】\n" + err.message);
       });
     }
 
@@ -472,6 +471,13 @@
         subordinateCache = list;
         const select = document.getElementById('underling-select');
         select.innerHTML = '<option value="">-- 請選擇店內學員 --</option>';
+        
+        // 🌟 防呆：若查無此店學員，主動跳出警報診斷
+        if (!list || list.length === 0) {
+          alert("⚠️ 系統提示：\n\n資料庫比對成功，但您的分店 [ " + store + " ] 目前在【員工主檔】中沒有任何標計為『是』需要寫考核表的儲備幹部學員項目！");
+          return;
+        }
+        
         list.forEach(u => {
           select.innerHTML += `<option value="${u.empId}">${u.name} (${u.empId})</option>`;
         });
@@ -493,7 +499,7 @@
           document.getElementById('info-eval-date').innerText = getMinguoToday();
           
           infoCard.classList.remove('hidden');
-          formContainer.classList.remove('hidden'); // 解鎖表單
+          formContainer.classList.remove('hidden'); // 展現考評大盒子
           
           setTimeout(() => {
             toggleSignatureType(); 
@@ -564,7 +570,7 @@
         savedSignaturePath: currentUser.savedSignature
       };
       
-      document.getElementById('confirm-modal-text').innerText = `確定要送出對 [ ${underlingName} ] 的本月考核嗎？送出後店長將無法再修改分數！`;
+      document.getElementById('confirm-modal-text').innerText = `確定要送出對 [ ${underlingName} ] 的本月考核嗎？`;
       document.getElementById('custom-confirm-modal').classList.remove('hidden');
     }
 
@@ -576,7 +582,7 @@
     function executeSubmit() {
       if(!pendingPayload) return;
       
-      const payloadToSend = pendingPayload; // 備份防 null
+      const payloadToSend = pendingPayload; 
       document.getElementById('custom-confirm-modal').classList.add('hidden'); 
       
       callAPI("submit", { formData: payloadToSend }, function(res) {
@@ -592,7 +598,7 @@
           clearSignatureCanvas();
           renderMetrics();
         } else {
-          alert("儲儲失敗：" + res.message);
+          alert("儲存失敗：" + res.message);
           pendingPayload = null;
         }
       });
