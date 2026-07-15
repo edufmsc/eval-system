@@ -2,13 +2,15 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>鬍鬚張-月考核表 (電腦專用版)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>鬍鬚張-月考核系統 (電腦專用版)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
     .brand-bg { background-color: #E05315; }
     .brand-text { color: #E05315; }
     .brand-border { border-color: #E05315; }
+    .touch-none { touch-action: none; }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans w-full overflow-x-hidden flex flex-col items-center justify-center">
@@ -24,9 +26,7 @@
         <div>
           <label class="block text-sm font-bold text-gray-700 mb-1">員工工號</label>
           <div class="relative">
-            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-              <i class="fa-solid fa-user"></i>
-            </span>
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i class="fa-solid fa-user"></i></span>
             <input type="text" id="emp-id" placeholder="請輸入工號 (例：00888)" class="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-base">
           </div>
         </div>
@@ -34,9 +34,7 @@
         <div>
           <label class="block text-sm font-bold text-gray-700 mb-1">密碼 (身分證後 4 碼)</label>
           <div class="relative">
-            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-              <i class="fa-solid fa-lock"></i>
-            </span>
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i class="fa-solid fa-lock"></i></span>
             <input type="password" id="id-tail" placeholder="請輸入身分證後 4 碼" class="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-base">
           </div>
         </div>
@@ -52,7 +50,7 @@
   <div id="app-container" class="hidden pb-12 w-full">
     <header class="brand-bg text-white py-4 px-6 shadow-md flex justify-between items-center sticky top-0 z-50 w-full">
       <div>
-        <h2 class="text-lg font-black tracking-wide">代理店副理月考核表 (電腦專用版)</h2>
+        <h2 class="text-lg font-black tracking-wide" id="system-title">代理店副理月考核表</h2>
         <p class="text-xs opacity-90">表單編號：G-18-01-06-03</p>
       </div>
       <div class="text-right">
@@ -64,68 +62,106 @@
     <div class="w-full max-w-6xl mx-auto px-6 mt-8">
       <div class="bg-white rounded-2xl shadow-md p-8 space-y-6">
         
-        <div>
-          <label class="block text-base font-black text-gray-700 mb-2">
-            <i class="fa-solid fa-user-check brand-text mr-1"></i> 請選擇受評儲備幹部：
-          </label>
-          <select id="underling-select" onchange="onUnderlingChange()" class="w-full p-3 border-2 brand-border rounded-xl focus:outline-none text-lg font-bold bg-white cursor-pointer">
-            <option value="">-- 請選擇店內學員 --</option>
-          </select>
+        <div class="grid grid-cols-1 gap-4">
+          <div id="store-select-box" class="hidden">
+            <label class="block text-base font-black text-gray-700 mb-2"><i class="fa-solid fa-user-check brand-text mr-1"></i> 請選擇店內受評儲備幹部：</label>
+            <select id="underling-select" onchange="onUnderlingChange()" class="w-full p-3 border-2 brand-border rounded-xl focus:outline-none text-lg font-bold bg-white cursor-pointer"></select>
+          </div>
+
+          <div id="reviewer-select-box" class="hidden">
+            <label class="block text-base font-black text-orange-600 mb-2"><i class="fa-solid fa-folder-open mr-1"></i> 您目前有待處理的考核審核單如下，請選擇：</label>
+            <select id="pending-form-select" onchange="onPendingFormChange()" class="w-full p-3 border-2 border-orange-500 rounded-xl focus:outline-none text-lg font-bold bg-orange-50 cursor-pointer"></select>
+          </div>
+        </div>
+
+        <div id="readonly-banner" class="hidden p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl text-amber-900 font-bold flex items-center gap-3">
+          <i class="fa-solid fa-circle-info text-2xl text-amber-500 animate-pulse"></i>
+          <div>
+            <p class="text-base" id="banner-text">📢 本月已完成考核起單！</p>
+            <p class="text-xs text-amber-700 font-medium mt-0.5">目前處於【唯讀查閱進度模式】，店長無法再次對該同仁重複打分與重寫。</p>
+          </div>
         </div>
 
         <div id="info-card-container" class="hidden bg-orange-50 border-2 border-orange-200 rounded-xl p-5 text-base space-y-2">
           <div class="grid grid-cols-2 gap-4">
-            <div><span class="font-bold text-gray-500">姓名：</span><span id="info-name" class="font-black text-gray-800">-</span></div>
-            <div><span class="font-bold text-gray-500">單位/轄區：</span><span id="info-store" class="font-black text-gray-800">-</span></div>
+            <div><span class="font-bold text-gray-500">受評姓名：</span><span id="info-name" class="font-black text-gray-800">-</span></div>
+            <div><span class="font-bold text-gray-500">所屬店別：</span><span id="info-store" class="font-black text-gray-800">-</span></div>
           </div>
           <div class="grid grid-cols-2 gap-4">
-            <div><span class="font-bold text-gray-500">轉任日：</span><span id="info-transfer" class="font-black text-gray-800">-</span></div>
-            <div><span class="font-bold text-gray-500 text-orange-600">評核日(今天)：</span><span id="info-eval-date" class="font-black text-orange-600">-</span></div>
+            <div><span class="font-bold text-gray-500">轉任日期：</span><span id="info-transfer" class="font-black text-gray-800">-</span></div>
+            <div><span class="font-bold text-gray-500 text-orange-600">評核日期：</span><span id="info-eval-date" class="font-black text-orange-600">-</span></div>
           </div>
         </div>
 
-        <div id="evaluation-form-container" class="hidden space-y-8">
-          <hr class="border-dashed border-gray-300">
-
-          <h3 class="text-lg font-black text-gray-800 border-l-4 brand-border pl-3">訓練單位主管每月填寫 (每項 10%)</h3>
-          <div class="grid grid-cols-2 gap-6" id="score-section"></div>
-
-          <hr class="border-dashed border-gray-300">
-
-          <div class="flex flex-col gap-6 w-full">
+        <div id="workflow-box" class="hidden space-y-8">
+          
+          <div id="section-manager" class="space-y-4">
+            <hr class="border-dashed border-gray-300">
+            <h3 class="text-lg font-black text-gray-800 border-l-4 brand-border pl-3">第一關：訓練單位主管填寫 (每項 10%，共 60%)</h3>
+            <div class="grid grid-cols-2 gap-6" id="score-section"></div>
+            
             <div class="w-full">
-              <label class="block text-base font-black text-gray-700 mb-2">
-                <i class="fa-solid fa-comment-dots brand-text mr-1"></i> 店經理評語：
-              </label>
-              <textarea id="manager-comment" class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-base h-36 resize-y" placeholder="請填寫對該學員本月的具體表現評價..."></textarea>
+              <label class="block text-base font-black text-gray-700 mb-2">店經理綜合評語：</label>
+              <textarea id="manager-comment" class="w-full p-4 border border-gray-300 rounded-xl text-base h-32 resize-none" placeholder="請填寫對該學員本月的具體表現評價..."></textarea>
             </div>
-
-            <div class="bg-gray-50 p-5 rounded-xl border border-gray-200 w-full space-y-4">
-              <div class="flex justify-between items-center">
-                <label class="block text-base font-black text-gray-700">
-                  <i class="fa-solid fa-signature brand-text mr-1"></i> 店經理簽章 (請使用滑鼠於下方白色畫布內簽名)：
-                </label>
-              </div>
-              
+            
+            <div id="sig-block-manager" class="bg-gray-50 p-5 rounded-xl border border-gray-200 w-full space-y-4">
+              <label class="block text-base font-black text-gray-700">店經理簽章：</label>
               <div id="saved-sig-box" class="hidden">
-                <label class="inline-flex items-center cursor-pointer py-1">
-                  <input type="checkbox" id="use-saved-sig" onchange="toggleSignatureType()" class="w-5 h-5 rounded text-orange-600 focus:ring-orange-500 border-gray-300">
-                  <span class="ml-2 text-sm font-bold text-gray-700">使用系統預存簽名確認</span>
-                </label>
+                <label class="inline-flex items-center cursor-pointer py-1"><input type="checkbox" id="use-saved-sig" onchange="toggleSignatureType()" class="w-5 h-5 rounded text-orange-600 focus:ring-orange-500 border-gray-300"><span class="ml-2 text-sm font-bold text-gray-700">使用系統預存簽名確認</span></label>
               </div>
-
-              <div id="canvas-wrapper" class="relative bg-white border-2 border-gray-300 rounded-xl overflow-hidden h-44 w-full">
-                <canvas id="signature-canvas" width="1000" height="300" class="w-full h-full block bg-white cursor-crosshair"></canvas>
-                <button type="button" onclick="clearSignatureCanvas()" class="absolute bottom-3 right-3 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-bold rounded-lg transition shadow-md">
-                  <i class="fa-solid fa-eraser mr-1"></i>一鍵清除
-                </button>
+              <div id="canvas-wrapper-manager" class="relative bg-white border-2 border-gray-300 rounded-xl overflow-hidden h-44 w-full">
+                <canvas id="signature-canvas" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas>
+                <button type="button" id="btn-clear-sig" onclick="clearSig('signature-canvas')" class="absolute bottom-3 right-3 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-bold rounded-lg transition shadow-md"><i class="fa-solid fa-eraser mr-1"></i>一鍵清除</button>
               </div>
             </div>
           </div>
 
-          <button onclick="submitForm()" id="btn-submit" class="w-full brand-bg text-white font-bold py-4 rounded-xl shadow-lg text-xl hover:bg-orange-700 transition">
-            <i class="fa-solid fa-paper-plane mr-2"></i>送出考核表
-          </button>
+          <div id="section-edu" class="hidden space-y-4 bg-orange-50/30 p-6 rounded-2xl border border-orange-100">
+            <hr class="border-dashed border-gray-300">
+            <h3 class="text-lg font-black text-gray-800 border-l-4 border-amber-500 pl-3">第二關：教育中心考核填寫 (學習成果階段，共 40%)</h3>
+            <div class="grid grid-cols-4 gap-4">
+              <div><label class="block text-sm font-bold text-gray-700 mb-1">職能積分認證 (15%)</label><input type="number" id="edu-score1" class="w-full p-2.5 border border-gray-300 rounded-xl text-base" placeholder="請輸入實得分"></div>
+              <div><label class="block text-sm font-bold text-gray-700 mb-1">OJT 手冊進度 (10%)</label><input type="number" id="edu-score2" class="w-full p-2.5 border border-gray-300 rounded-xl text-base" placeholder="請輸入實得分"></div>
+              <div><label class="block text-sm font-bold text-gray-700 mb-1">每週進度回報 (5%)</label><input type="number" id="edu-score3" class="w-full p-2.5 border border-gray-300 rounded-xl text-base" placeholder="請輸入實得分"></div>
+              <div><label class="block text-sm font-bold text-gray-700 mb-1">培訓課程狀況 (10%)</label><input type="number" id="edu-score4" class="w-full p-2.5 border border-gray-300 rounded-xl text-base" placeholder="請輸入實得分"></div>
+            </div>
+            <div class="w-full"><label class="block text-sm font-bold text-red-600 mb-1">⚠️ 教育中心異常回報欄位：</label><textarea id="edu-comment" class="w-full p-3 border border-red-300 rounded-xl text-base h-24 resize-none" placeholder="請詳細記錄培訓期間發生的店鋪或學員異常狀況..."></textarea></div>
+            <div id="sig-block-edu" class="bg-white p-4 rounded-xl border border-gray-200 space-y-2">
+              <label class="block text-sm font-bold text-gray-700">教育中心負責人簽章：</label>
+              <div class="relative bg-white border border-gray-300 rounded-xl overflow-hidden h-36 w-full">
+                <canvas id="signature-canvas-edu" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas>
+                <button type="button" onclick="clearSig('signature-canvas-edu')" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 text-gray-700 text-xs font-bold rounded-lg"><i class="fa-solid fa-eraser mr-1"></i>清除</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="section-vp" class="hidden space-y-4 bg-teal-50/20 p-6 rounded-2xl border border-teal-100">
+            <hr class="border-dashed border-gray-300">
+            <h3 class="text-lg font-black text-gray-800 border-l-4 border-teal-600 pl-3">第五關：營業副總簽核審查</h3>
+            <div class="w-full"><label class="block text-sm font-bold text-teal-800 mb-1">營業副總裁決評語：</label><textarea id="vp-comment" class="w-full p-3 border border-teal-300 rounded-xl text-base h-24 resize-none" placeholder="請輸入對本考核案的批示評語..."></textarea></div>
+            <div id="sig-block-vp" class="bg-white p-4 rounded-xl border border-gray-200 space-y-2">
+              <label class="block text-sm font-bold text-gray-700">營業副總核章：</label>
+              <div class="relative bg-white border border-gray-300 rounded-xl overflow-hidden h-36 w-full">
+                <canvas id="signature-canvas-vp" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas>
+                <button type="button" onclick="clearSig('signature-canvas-vp')" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 text-gray-700 text-xs font-bold rounded-lg"><i class="fa-solid fa-eraser mr-1"></i>清除</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="section-gm" class="hidden space-y-4 bg-purple-50/20 p-6 rounded-2xl border border-purple-100">
+            <hr class="border-dashed border-gray-300">
+            <h3 class="text-lg font-black text-purple-900 border-l-4 border-purple-700 pl-3">👑 第六關：總經理最高裁決核定</h3>
+            <div id="sig-block-gm" class="bg-white p-4 rounded-xl border border-gray-200 space-y-2">
+              <label class="block text-sm font-bold text-gray-700">總經理最高核定簽章：</label>
+              <div class="relative bg-white border border-gray-300 rounded-xl overflow-hidden h-36 w-full">
+                <canvas id="signature-canvas-gm" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas>
+                <button type="button" onclick="clearSig('signature-canvas-gm')" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 text-gray-700 text-xs font-bold rounded-lg"><i class="fa-solid fa-eraser mr-1"></i>清除</button>
+              </div>
+            </div>
+          </div>
+
+          <button id="btn-submit-main" onclick="submitForm()" class="w-full brand-bg text-white font-bold py-4 rounded-xl shadow-lg text-lg hover:bg-orange-700 transition"><i class="fa-solid fa-paper-plane mr-2"></i>確認並送出本關卡資料</button>
         </div>
 
       </div>
@@ -135,11 +171,9 @@
   <div id="custom-confirm-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden px-4">
     <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm border-t-8 brand-border overflow-hidden">
       <div class="p-6 text-center">
-        <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <i class="fa-solid fa-triangle-exclamation text-3xl brand-text"></i>
-        </div>
+        <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-triangle-exclamation text-3xl brand-text"></i></div>
         <h3 class="text-xl font-black text-gray-800 mb-2">確定送出考核嗎？</h3>
-        <p id="confirm-modal-text" class="text-gray-600 text-sm leading-relaxed mb-6">確定要送出考核嗎？送出後店長將無法再修改分數！</p>
+        <p id="confirm-modal-text" class="text-gray-600 text-sm leading-relaxed mb-6">確定要送出考核嗎？送出後資料將無法再修改！</p>
         <div class="flex gap-3">
           <button onclick="closeConfirmModal()" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition">取消</button>
           <button onclick="executeSubmit()" class="flex-1 py-3 brand-bg hover:bg-orange-700 text-white font-bold rounded-xl shadow-md transition">確定送出</button>
@@ -159,147 +193,47 @@
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbysdFVEq81YuSme1wp72i_MePw2P2TkGPysYJ1gJEvC-58DTuzCkyZbwMddqjiBMTuJ/exec";
 
     const metrics = [
-      {
-        id: 1,
-        title: "責任感",
-        ranges: [
-          { label: "8 ~ 10 分", min: 8, max: 10, text: "責任感相當強,可以充分信賴,無須任何督促。" },
-          { label: "6 ~ 7 分", min: 6, max: 7, text: "可獨自負責,處事穩健,須偶爾督促。" },
-          { label: "3 ~ 5 分", min: 3, max: 5, text: "可以信賴,但須略加督促。" },
-          { label: "1 ~ 2 分", min: 1, max: 2, text: "處事被動,不積極,必須有人經常加以督促。" }
-        ]
-      },
-      {
-        id: 2,
-        title: "協調性",
-        ranges: [
-          { label: "8 ~ 10 分", min: 8, max: 10, text: "能主動與人協調與上級員維持和諧關係,同事極願與其合作。" },
-          { label: "6 ~ 7 分", min: 6, max: 7, text: "能與人和諧相處,願接納他人意見而不固執,偶亦屬熱心助人。" },
-          { label: "3 ~ 5 分", min: 3, max: 5, text: "雖不特別致力於他人協調,但亦不與他人發生爭執與摩擦。" },
-          { label: "1 ~ 2 分", min: 1, max: 2, text: "缺乏協調與同事間偶爾會摩擦。" }
-        ]
-      },
-      {
-        id: 3,
-        title: "表達能力",
-        ranges: [
-          { label: "8 ~ 10 分", min: 8, max: 10, text: "文筆、言談、論理明確,能化繁為簡,密而不漏。" },
-          { label: "6 ~ 7 分", min: 6, max: 7, text: "表達有條理,使人易於了解。" },
-          { label: "3 ~ 5 分", min: 3, max: 5, text: "表達平平,大致可了解其意,不致引人誤解。" },
-          { label: "1 ~ 2 分", min: 1, max: 2, text: "文筆生硬言談欠明確不易讓人了解。" }
-        ]
-      },
-      {
-        id: 4,
-        title: "學習態度",
-        ranges: [
-          { label: "8 ~ 10 分", min: 8, max: 10, text: "針對突發狀況,能主動積極提出疑問虛心求救。" },
-          { label: "6 ~ 7 分", min: 6, max: 7, text: "能誠懇接受他人教導,但主動較弱。" },
-          { label: "3 ~ 5 分", min: 3, max: 5, text: "能誠懇接受他人教導,但主動較弱。" },
-          { label: "1 ~ 2 分", min: 1, max: 2, text: "不能主動學習,須加以督導。" }
-        ]
-      },
-      {
-        id: 5,
-        title: "解決問題能力",
-        ranges: [
-          { label: "8 ~ 10 分", min: 8, max: 10, text: "針對可能發生之問題,極求解,並予以解決。能迅速謀求改善對策,需督促即可完成。" },
-          { label: "6 ~ 7 分", min: 6, max: 7, text: "具有解決問題之能力,但須督促完成。" },
-          { label: "3 ~ 5 分", min: 3, max: 5, text: "能謀求改善之道,但無擔當之魄力。" },
-          { label: "1 ~ 2 分", min: 1, max: 2, text: "無法迅速謀求改善對策,並有逃避之現象。" }
-        ]
-      },
-      {
-        id: 6,
-        title: "個人儀容",
-        ranges: [
-          { label: "8 ~ 10 分", min: 8, max: 10, text: "整齊清潔,端正足為模範。" },
-          { label: "6 ~ 7 分", min: 6, max: 7, text: "重視清潔衛生。" },
-          { label: "3 ~ 5 分", min: 3, max: 5, text: "達到基本要求。" },
-          { label: "1 ~ 2 分", min: 1, max: 2, text: "我行我素,須經常糾正才會改進。" }
-        ]
-      }
+      { id: 1, title: "責任感", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "責任感相當強,可以充分信賴,無須任何督促。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "可獨自負責,處事穩健,須偶爾督促。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "可以信賴,但須略加督促。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "處事被動,不積極,必須有人經常加以督促。" }] },
+      { id: 2, title: "協調性", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "能主動與人協調與上級員維持和諧關係,同事極願與其合作。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "能與人和諧相處,願接納他人意見而不固執,偶亦屬熱心助人。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "雖不特別致力於他人協調,但亦不與他人發生爭執與摩擦。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "缺乏協調與同事間偶爾會摩擦。" }] },
+      { id: 3, title: "表達能力", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "文筆、言談、論理明確,能化繁為簡,密而不漏。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "表達有條理,使人易於了解。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "表達平平,大致可了解其意,不致引人誤解。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "文筆生硬言談欠明確不易讓人了解。" }] },
+      { id: 4, title: "學習態度", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "針對突發狀況,能主動積極提出疑問虛心求救。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "能誠懇接受他人教導,但主動較弱。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "能誠懇接受他人教導,但主動較弱。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "不能主動學習,須加以督導。" }] },
+      { id: 5, title: "解決問題能力", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "針對可能發生之問題,極求解,並予以解決。能迅速謀求改善對策,需督促即可完成。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "具有解決問題之能力,打須督促完成。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "能謀求改善之道,但無擔當之魄力。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "無法迅速謀求改善對策,並有逃避之現象。" }] },
+      { id: 6, title: "個人儀容", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "整齊清潔,端正足為模範。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "重視清潔衛生。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "達到基本要求。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "我行我素,須經常糾正才會改進。" }] }
     ];
 
-    let currentUser = null;
-    let subordinateCache = []; 
-    let activeRanges = {};     
-    let selectedScores = {};   
-    let pendingPayload = null; 
+    let currentUser = null, subordinateCache = [], pendingFormCache = [], activeRanges = {}, selectedScores = {}, pendingPayload = null;
+    let activeCanvasId = null, canvasMap = {}, isReadOnlyMode = false;
 
-    let canvas, ctx, isDrawing = false;
-    let sigCanvasInit = false;
-
-    window.onload = function() {
-      renderMetrics();
-    };
+    window.onload = function() { renderMetrics(); };
 
     function renderMetrics() {
-      const section = document.getElementById('score-section');
-      section.innerHTML = '';
-      
+      const section = document.getElementById('score-section'); section.innerHTML = '';
       metrics.forEach(m => {
         let rangesHTML = '';
         m.ranges.forEach(r => {
           let scoreButtons = '';
           for(let s = r.min; s <= r.max; s++) {
-            scoreButtons += `
-              <button type="button" 
-                      onclick="selectExactScore(event, ${m.id}, ${s}, ${r.min}, ${r.max})" 
-                      id="btn-score-${m.id}-${s}" 
-                      class="px-4 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-bold text-gray-700 hover:border-orange-500 transition">
-                ${s}分
-              </button>
-            `;
+            scoreButtons += `<button type="button" onclick="selectExactScore(event, ${m.id}, ${s}, ${r.min}, ${r.max})" id="btn-score-${m.id}-${s}" class="px-4 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-bold text-gray-700 hover:border-orange-500 transition">${s}分</button>`;
           }
-          
-          rangesHTML += `
-            <div id="range-card-${m.id}-${r.min}-${r.max}" 
-                 onclick="clickRangeCard(${m.id}, ${r.min}, ${r.max})" 
-                 class="p-4 border border-gray-200 rounded-xl bg-white cursor-pointer hover:bg-orange-50/50 hover:border-orange-300 transition duration-150">
-              <div class="flex justify-between items-center mb-1">
-                <span class="text-xs font-black text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">${r.label}</span>
-                <span id="check-icon-${m.id}-${r.min}-${r.max}" class="text-orange-500 hidden"><i class="fa-solid fa-circle-check text-sm"></i></span>
-              </div>
-              <p class="text-sm text-gray-700 font-medium mb-3">${r.text}</p>
-              <div class="flex flex-wrap gap-2">
-                ${scoreButtons}
-              </div>
-            </div>
-          `;
+          rangesHTML += `<div id="range-card-${m.id}-${r.min}-${r.max}" onclick="clickRangeCard(${m.id}, ${r.min}, ${r.max})" class="p-4 border border-gray-200 rounded-xl bg-white cursor-pointer hover:bg-orange-50/50 hover:border-orange-300 transition duration-150"><div class="flex justify-between items-center mb-1"><span class="text-xs font-black text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">${r.label}</span><span id="check-icon-${m.id}-${r.min}-${r.max}" class="text-orange-500 hidden"><i class="fa-solid fa-circle-check text-sm"></i></span></div><p class="text-sm text-gray-700 font-medium mb-3">${r.text}</p><div class="flex flex-wrap gap-2">${scoreButtons}</div></div>`;
         });
-        
-        const card = `
-          <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-            <div class="flex justify-between items-center border-b pb-2">
-              <span class="font-black text-gray-800 text-base flex items-center">
-                <span class="w-1.5 h-5 brand-bg mr-2 rounded-full"></span>
-                ${m.id}. ${m.title}
-              </span>
-              <span id="final-badge-${m.id}" class="text-xs font-black bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">未評分</span>
-            </div>
-            <div class="grid grid-cols-1 gap-3">
-              ${rangesHTML}
-            </div>
-          </div>
-        `;
-        section.innerHTML += card;
+        section.innerHTML += `<div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3"><div class="flex justify-between items-center border-b pb-2"><span class="font-black text-gray-800 text-base flex items-center"><span class="w-1.5 h-5 brand-bg mr-2 rounded-full"></span>${m.id}. ${m.title}</span><span id="final-badge-${m.id}" class="text-xs font-black bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">未評分</span></div><div class="grid grid-cols-1 gap-3">${rangesHTML}</div></div>`;
       });
     }
 
     function selectExactScore(event, metricId, score, min, max) {
       if(event) event.stopPropagation();
-      
+      if(isReadOnlyMode) return; // 🔒 唯讀攔截
+
       const prevScore = selectedScores[metricId];
       if (prevScore) {
         const prevBtn = document.getElementById(`btn-score-${metricId}-${prevScore}`);
         if (prevBtn) prevBtn.className = "px-4 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-bold text-gray-700 hover:border-orange-500 transition";
       }
-      
       if (activeRanges[metricId]) {
         const prevKey = activeRanges[metricId];
         const prevCard = document.getElementById(`range-card-${metricId}-${prevKey}`);
-        if (prevCard) prevCard.className = "p-4 border border-gray-200 rounded-xl bg-white cursor-pointer hover:bg-orange-50/50 hover:border-orange-300 transition duration-150";
+        if (prevCard) prevCard.className = "p-4 border border-gray-200 rounded-xl bg-white cursor-pointer";
         const prevCheck = document.getElementById(`check-icon-${metricId}-${prevKey}`);
         if (prevCheck) prevCheck.classList.add('hidden');
       }
@@ -313,324 +247,244 @@
       const btn = document.getElementById(`btn-score-${metricId}-${score}`);
       if (btn) btn.className = "px-4 py-1.5 brand-bg text-white border-transparent rounded-full text-xs font-bold shadow-md transition";
       
-      selectedScores[metricId] = score;
-      activeRanges[metricId] = key;
-      
+      selectedScores[metricId] = score; activeRanges[metricId] = key;
       const badge = document.getElementById('final-badge-' + metricId);
-      if (badge) {
-        badge.innerText = `${score} 分`;
-        badge.className = "text-xs font-black brand-bg text-white px-2.5 py-1 rounded-full shadow-sm";
+      if (badge) { badge.innerText = `${score} 分`; badge.className = "text-xs font-black brand-bg text-white px-2.5 py-1 rounded-full shadow-sm"; }
+    }
+    function clickRangeCard(metricId, min, max) { selectExactScore(null, metricId, max, min, max); }
+
+    // 🌟 固定解析度滑鼠/觸控萬能繪圖器 (徹底防止偏移與重置洗白)
+    function initCanvasDevice(id) {
+      if (canvasMap[id]) return;
+      let cvs = document.getElementById(id); let ctx = cvs.getContext('2d');
+      ctx.strokeStyle = "#333333"; ctx.lineWidth = 4; ctx.lineCap = "round";
+      let drawing = false;
+      
+      function getCoords(e) {
+        let rect = cvs.getBoundingClientRect();
+        let clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
+        let clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
+        return { x: (clientX - rect.left) * (cvs.width / rect.width), y: (clientY - rect.top) * (cvs.height / rect.height) };
       }
-    }
-
-    function clickRangeCard(metricId, min, max) {
-      selectExactScore(null, metricId, max, min, max);
-    }
-
-    // 滑鼠精確座標計算
-    function getCanvasCoords(e) {
-      const rect = canvas.getBoundingClientRect();
-      return {
-        x: (e.clientX - rect.left) * (canvas.width / rect.width),
-        y: (e.clientY - rect.top) * (canvas.height / rect.height)
-      };
-    }
-
-    function initSignatureCanvas() {
-      if (sigCanvasInit) return;
-      canvas = document.getElementById('signature-canvas');
-      ctx = canvas.getContext('2d');
       
-      ctx.strokeStyle = "#333333";
-      ctx.lineWidth = 4;
-      ctx.lineCap = "round";
+      cvs.addEventListener('mousedown', (e) => { drawing = true; ctx.beginPath(); let p = getCoords(e); ctx.moveTo(p.x, p.y); });
+      cvs.addEventListener('mousemove', (e) => { if(!drawing) return; let p = getCoords(e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
+      cvs.addEventListener('touchstart', (e) => { drawing = true; ctx.beginPath(); let p = getCoords(e); ctx.moveTo(p.x, p.y); e.preventDefault(); });
+      cvs.addEventListener('touchmove', (e) => { if(!drawing) return; let p = getCoords(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); }, {passive:false});
       
-      // 滑鼠簽名事件
-      canvas.addEventListener('mousedown', (e) => {
-        isDrawing = true;
-        ctx.strokeStyle = "#333333"; ctx.lineWidth = 4; ctx.lineCap = "round";
-        const coords = getCanvasCoords(e);
-        ctx.beginPath();
-        ctx.moveTo(coords.x, coords.y);
-      });
-      canvas.addEventListener('mousemove', (e) => {
-        if (!isDrawing) return;
-        const coords = getCanvasCoords(e);
-        ctx.lineTo(coords.x, coords.y);
-        ctx.stroke();
-      });
-      window.addEventListener('mouseup', () => { isDrawing = false; });
-      
-      sigCanvasInit = true;
+      let stopDraw = () => { drawing = false; };
+      window.addEventListener('mouseup', stopDraw); window.addEventListener('touchend', stopDraw);
+      canvasMap[id] = { cvs: cvs, ctx: ctx };
     }
+    function clearSig(id) { if(canvasMap[id]) canvasMap[id].ctx.clearRect(0,0,canvasMap[id].cvs.width,canvasMap[id].cvs.height); }
 
-    function clearSignatureCanvas() {
-      if (!canvas) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-
-    // 預存簽章與手寫板切換
-    function toggleSignatureType() {
-      const isChecked = document.getElementById('use-saved-sig').checked;
-      const canvasWrapper = document.getElementById('canvas-wrapper');
-      if (isChecked) {
-        canvasWrapper.classList.add('hidden');
-      } else {
-        canvasWrapper.classList.remove('hidden');
-        initSignatureCanvas();
-      }
-    }
-
-    function isCanvasBlank() {
-      if (!canvas) return true;
-      const blank = document.createElement('canvas');
-      blank.width = canvas.width;
-      blank.height = canvas.height;
-      return canvas.toDataURL() === blank.toDataURL();
-    }
-
-    // API 診斷連線工具
-    function callAPI(action, data, successCallback) {
-      const payload = Object.assign({ action: action }, data);
-      showLoading(true); 
-      
-      fetch(GAS_API_URL, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      })
-      .then(res => {
-        if (!res.ok) throw new Error("Google 伺服器拒連，狀態碼: " + res.status);
-        return res.text();
-      })
-      .then(text => {
-        showLoading(false); 
-        try {
-          const resData = JSON.parse(text);
-          successCallback(resData);
-        } catch (jsonErr) {
-          console.error("後端回應內容：", text);
-          if (text.includes("google.com") || text.includes("Sign in")) {
-            throw new Error("【後台未開放】請前往 Google GAS 將部署設定改為「任何人 (Anyone)」可以存取。");
-          } else {
-            throw new Error("回應格式異常！");
-          }
-        }
-      })
-      .catch(err => {
-        showLoading(false); 
-        alert("❌ 電腦版連線失敗！\n\n【原因】\n" + err.message);
-      });
-    }
-
-    // 登入
     function handleLogin() {
       const empId = document.getElementById('emp-id').value.trim();
       const idTail = document.getElementById('id-tail').value.trim();
       const errorEl = document.getElementById('login-error');
+      if(!empId || !idTail) return alert("請完整輸入工號與密碼！");
       
-      if(!empId || !idTail) {
-        errorEl.innerText = "請輸入工號與密碼！";
-        errorEl.classList.remove('hidden');
-        return;
-      }
-      
-      showLoading(true);
-      errorEl.classList.add('hidden');
-      
+      showLoading(true); errorEl.classList.add('hidden');
       callAPI("login", { empId: empId, idTail: idTail }, function(result) {
         showLoading(false);
         if(result.success) {
           currentUser = result;
           document.getElementById('login-container').classList.add('hidden');
           document.getElementById('app-container').classList.remove('hidden');
+          document.getElementById('user-info').innerText = `${result.name} (${result.role})`;
+          document.getElementById('system-title').innerText = `鬍鬚張月考核系統 ── 【${result.role}端】`;
           
-          document.getElementById('info-card-container').classList.add('hidden');
-          document.getElementById('evaluation-form-container').classList.add('hidden');
-          document.getElementById('user-info').innerText = `${result.name} (${result.title})`;
-          
-          const savedSigBox = document.getElementById('saved-sig-box');
-          const hasSavedSig = result.savedSignature && String(result.savedSignature).trim() !== "";
-          if (hasSavedSig) {
-            savedSigBox.classList.remove('hidden');
-            document.getElementById('use-saved-sig').checked = true;
+          if(result.role === "店長") {
+            document.getElementById('store-select-box').classList.remove('hidden');
+            callAPI("getUnderlings", { store: result.store }, function(list) {
+              subordinateCache = list;
+              const select = document.getElementById('underling-select');
+              select.innerHTML = '<option value="">-- 請選擇店內學員 --</option>';
+              list.forEach(u => {
+                let tag = u.alreadyEval ? ` [本月已起單 - ${u.currentStatus}]` : '';
+                select.innerHTML += `<option value="${u.empId}">${u.name} (${u.empId})${tag}</option>`;
+              });
+            });
+            if (result.savedSignature) document.getElementById('saved-sig-box').classList.remove('hidden');
           } else {
-            savedSigBox.classList.add('hidden');
-            document.getElementById('use-saved-sig').checked = false;
+            // 審核主管端選單 (教育中心 / 區主管 / 副總 / 總經理)
+            document.getElementById('reviewer-select-box').classList.remove('hidden');
+            callAPI("getPendingForms", { role: result.role, dept: result.dept, area: result.area, empId: result.empId }, function(list) {
+              pendingFormCache = list;
+              const select = document.getElementById('pending-form-select');
+              select.innerHTML = `<option value="">-- 您目前有 ${list.length} 筆待處理考核單，請選擇 --</option>`;
+              list.forEach((f, idx) => { select.innerHTML += `<option value="${idx}">${f.month} 考核單：${f.underlingName} (${f.store})</option>`; });
+            });
           }
-          
-          loadUnderlings(result.store);
         } else {
-          errorEl.innerText = result.message;
-          errorEl.classList.remove('hidden');
+          errorEl.innerText = result.message; errorEl.classList.remove('hidden');
         }
       });
     }
 
-    function loadUnderlings(store) {
-      callAPI("getUnderlings", { store: store }, function(list) {
-        subordinateCache = list;
-        const select = document.getElementById('underling-select');
-        select.innerHTML = '<option value="">-- 請選擇店內學員 --</option>';
-        
-        // 🌟 防呆：若查無此店學員，主動跳出警報診斷
-        if (!list || list.length === 0) {
-          alert("⚠️ 系統提示：\n\n資料庫比對成功，但您的分店 [ " + store + " ] 目前在【員工主檔】中沒有任何標計為『是』需要寫考核表的儲備幹部學員項目！");
-          return;
-        }
-        
-        list.forEach(u => {
-          select.innerHTML += `<option value="${u.empId}">${u.name} (${u.empId})</option>`;
-        });
-      });
-    }
-
+    // 🌟 店長選擇學員：查閱查核與自動防重複起單鎖定 (解決問題1、問題3)
     function onUnderlingChange() {
-      const select = document.getElementById('underling-select');
-      const selectedId = select.value;
-      const infoCard = document.getElementById('info-card-container');
-      const formContainer = document.getElementById('evaluation-form-container');
+      const selectedId = document.getElementById('underling-select').value;
+      if (!selectedId) return lockAllWorkflow();
+      const sub = subordinateCache.find(u => u.empId === selectedId);
       
-      if (selectedId) {
-        const sub = subordinateCache.find(u => u.empId === selectedId);
-        if (sub) {
-          document.getElementById('info-name').innerText = sub.name;
-          document.getElementById('info-store').innerText = `${sub.area} / ${sub.store}`;
-          document.getElementById('info-transfer').innerText = sub.transferDate || "-";
-          document.getElementById('info-eval-date').innerText = getMinguoToday();
-          
-          infoCard.classList.remove('hidden');
-          formContainer.classList.remove('hidden'); // 展現考評大盒子
-          
-          setTimeout(() => {
-            toggleSignatureType(); 
-          }, 50);
-          return;
-        }
+      document.getElementById('info-name').innerText = sub.name;
+      document.getElementById('info-store').innerText = sub.store;
+      document.getElementById('info-transfer').innerText = sub.transferDate || "-";
+      document.getElementById('info-eval-date').innerText = sub.alreadyEval ? sub.evalDate : getMinguoToday();
+      document.getElementById('info-card-container').classList.remove('hidden');
+      document.getElementById('workflow-box').classList.remove('hidden');
+      document.getElementById('section-manager').classList.remove('hidden');
+
+      if (sub.alreadyEval) {
+        isReadOnlyMode = true;
+        document.getElementById('readonly-banner').classList.remove('hidden');
+        document.getElementById('banner-text').innerText = `📢 該同仁本月已起單！表單目前已推進至：【${sub.currentStatus}】`;
+        document.getElementById('btn-submit-main').classList.add('hidden'); // 拔除送出鍵，徹底鎖死防止重寫
+        
+        for(let i=1; i<=6; i++) { selectExactScore(null, i, sub.historyData.scores[i-1], 1, 10); }
+        document.getElementById('manager-comment').value = sub.historyData.comment;
+        document.getElementById('manager-comment').disabled = true;
+        document.getElementById('manager-comment').classList.add('bg-gray-100','text-gray-500');
+        document.getElementById('canvas-wrapper-manager').innerHTML = `<p class="p-4 text-xs font-black text-gray-500 bg-gray-50 rounded-xl">店長已核章送出。簽名路徑：<a href="${sub.historyData.sig}" target="_blank" class="text-blue-500 underline">點擊查閱起單簽名檔</a></p>`;
+      } else {
+        isReadOnlyMode = false;
+        document.getElementById('readonly-banner').classList.add('hidden');
+        document.getElementById('btn-submit-main').classList.remove('hidden');
+        document.getElementById('manager-comment').value = ''; document.getElementById('manager-comment').disabled = false;
+        document.getElementById('manager-comment').className = "w-full p-4 border border-gray-300 rounded-xl text-base h-32 resize-y";
+        document.getElementById('canvas-wrapper-manager').innerHTML = `<canvas id="signature-canvas" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas><button type="button" onclick="clearSig('signature-canvas')" class="absolute bottom-3 right-3 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-bold rounded-lg transition shadow-md"><i class="fa-solid fa-eraser mr-1"></i>一鍵清除</button>`;
+        
+        selectedScores = {}; activeRanges = {}; renderMetrics();
+        initCanvasDevice('signature-canvas'); toggleSignatureType();
       }
-      infoCard.classList.add('hidden');
-      formContainer.classList.add('hidden'); 
     }
 
-    function getMinguoToday() {
-      const today = new Date();
-      const yy = today.getFullYear() - 1911;
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const dd = String(today.getDate()).padStart(2, '0');
-      return `${yy}/${mm}/${dd}`;
+    // 主管審核單點選變動 (前人資料灰色鎖死)
+    function onPendingFormChange() {
+      const idx = document.getElementById('pending-form-select').value;
+      if (idx === "") return lockAllWorkflow();
+      const f = pendingFormCache[idx];
+      isReadOnlyMode = true; 
+
+      document.getElementById('info-name').innerText = f.underlingName;
+      document.getElementById('info-store').innerText = f.store;
+      document.getElementById('info-transfer').innerText = "-";
+      document.getElementById('info-eval-date').innerText = f.evalDate;
+      document.getElementById('info-card-container').classList.remove('hidden');
+      document.getElementById('workflow-box').classList.remove('hidden');
+      document.getElementById('btn-submit-main').classList.remove('hidden');
+      
+      // 鎖死店長起單內容
+      document.getElementById('section-manager').classList.remove('hidden');
+      document.getElementById('manager-comment').value = f.managerComment; document.getElementById('manager-comment').disabled = true;
+      document.getElementById('manager-comment').classList.add('bg-gray-100','text-gray-500');
+      document.getElementById('sig-block-manager').innerHTML = `<p class="text-xs font-bold text-gray-500">店長已核章：<a href="${f.managerSig}" target="_blank" class="text-blue-500 underline">查看店長簽名檔路徑</a></p>`;
+      for(let i=1; i<=6; i++) { const b = document.getElementById(`final-badge-${i}`); b.innerText = `${f.scores[i-1]} 分`; }
+
+      // 依身分開啟特定審查盒子
+      const role = currentUser.role;
+      if (role === "教育中心") {
+        document.getElementById('section-edu').classList.remove('hidden');
+        initCanvasDevice('signature-canvas-edu');
+      } else if (role === "營業副總") {
+        document.getElementById('section-edu').classList.remove('hidden');
+        document.getElementById('edu-score1').value = f.eduData.score1; document.getElementById('edu-score2').value = f.eduData.score2;
+        document.getElementById('edu-score3').value = f.eduData.score3; document.getElementById('edu-score4').value = f.eduData.score4;
+        document.getElementById('edu-comment').value = f.eduData.comment;
+        document.getElementById('section-edu').querySelectorAll('input, textarea').forEach(el => el.disabled = true);
+        document.getElementById('sig-block-edu').innerHTML = `<p class="text-xs font-bold text-gray-500">教育中心已核章</p>`;
+        
+        document.getElementById('section-vp').classList.remove('hidden');
+        initCanvasDevice('signature-canvas-vp');
+      } else if (role === "總經理") {
+        document.getElementById('section-edu').classList.remove('hidden');
+        document.getElementById('section-edu').querySelectorAll('input, textarea').forEach(el => el.disabled = true);
+        document.getElementById('section-vp').classList.remove('hidden');
+        document.getElementById('vp-comment').value = f.vpComment; document.getElementById('vp-comment').disabled = true;
+        
+        document.getElementById('section-gm').classList.remove('hidden');
+        initCanvasDevice('signature-canvas-gm');
+      }
+    }
+
+    function toggleSignatureType() {
+      const isChecked = document.getElementById('use-saved-sig').checked;
+      document.getElementById('canvas-wrapper').className = isChecked ? "hidden" : "relative bg-white border-2 border-gray-300 rounded-xl overflow-hidden h-44 w-full";
     }
 
     function submitForm() {
-      const underlingSelect = document.getElementById('underling-select');
-      const underlingId = underlingSelect.value;
-      const underlingName = document.getElementById('info-name').innerText;
-      const comment = document.getElementById('manager-comment').value.trim();
-      const useSavedSig = document.getElementById('use-saved-sig').checked;
-      
-      if(!underlingId) {
-        alert("請先選擇要考核的學員！");
-        return;
+      const role = currentUser.role; let payload = {};
+      if (role === "店長") {
+        const subId = document.getElementById('underling-select').value;
+        const comment = document.getElementById('manager-comment').value.trim();
+        const useSavedSig = document.getElementById('use-saved-sig').checked;
+        for(let i=1; i<=6; i++) { if(!selectedScores[i]) return alert(`請為第 ${i} 項給予確切評分！`); }
+        if(!comment) return alert("請填寫店經理評語！");
+        if(!useSavedSig && isCanvasBlank('signature-canvas')) return alert("請在下方手寫板內完成滑鼠簽名！");
+        
+        payload = {
+          managerId: currentUser.empId, store: currentUser.store, underlingId: subId,
+          underlingName: document.getElementById('info-name').innerText,
+          score1: selectedScores[1], score2: selectedScores[2], score3: selectedScores[3], score4: selectedScores[4], score5: selectedScores[5], score6: selectedScores[6],
+          comment: comment, evalDate: getMinguoToday(), signatureType: useSavedSig ? "saved" : "manual",
+          signatureBase64: useSavedSig ? "" : canvasMap['signature-canvas'].cvs.toDataURL(), savedSignaturePath: currentUser.savedSignature
+        };
+      } 
+      else if (role === "教育中心") {
+        const selIdx = document.getElementById('pending-form-select').value; const f = pendingFormCache[selIdx];
+        const sc1 = document.getElementById('edu-score1').value.trim(); const sc2 = document.getElementById('edu-score2').value.trim();
+        const sc3 = document.getElementById('edu-score3').value.trim(); const sc4 = document.getElementById('edu-score4').value.trim();
+        const eduComment = document.getElementById('edu-comment').value.trim();
+        if(!sc1 || !sc2 || !sc3 || !sc4 || !eduComment) return alert("請完整輸入學習成果 4 項分數與異常回報！");
+        if(isCanvasBlank('signature-canvas-edu')) return alert("請完成教育中心核章！");
+        payload = { rowIndex: f.rowIndex, empId: currentUser.empId, edu1: sc1, edu2: sc2, edu3: sc3, edu4: sc4, eduComment: eduComment, signatureBase64: canvasMap['signature-canvas-edu'].cvs.toDataURL() };
       }
-      
-      for(let i=1; i<=6; i++) {
-        if(!selectedScores[i]) {
-          alert(`請為第 ${i} 項「${metrics[i-1].title}」給予確切評分！`);
-          return;
-        }
+      else if (role === "營業副總") {
+        const selIdx = document.getElementById('pending-form-select').value; const f = pendingFormCache[selIdx];
+        const vpComment = document.getElementById('vp-comment').value.trim();
+        if(!vpComment) return alert("請填寫副總裁決評語！");
+        if(isCanvasBlank('signature-canvas-vp')) return alert("請完成副總核章！");
+        payload = { rowIndex: f.rowIndex, empId: currentUser.empId, vpComment: vpComment, signatureBase64: canvasMap['signature-canvas-vp'].cvs.toDataURL() };
       }
-      
-      if(!comment) {
-        alert("請填寫店經理評語！");
-        return;
+      else if (role === "總經理") {
+        const selIdx = document.getElementById('pending-form-select').value; const f = pendingFormCache[selIdx];
+        if(isCanvasBlank('signature-canvas-gm')) return alert("請總經理點擊手寫板進行最終結案確認章！");
+        payload = { rowIndex: f.rowIndex, empId: currentUser.empId, signatureBase64: canvasMap['signature-canvas-gm'].cvs.toDataURL() };
       }
 
-      let sigBase64 = "";
-      if (!useSavedSig) {
-        if (isCanvasBlank()) {
-          alert("請在下方手寫板簽名，或勾選使用系統預存簽名！");
-          return;
-        }
-        sigBase64 = canvas.toDataURL();
-      }
-      
-      pendingPayload = {
-        managerId: currentUser.empId,
-        store: currentUser.store,
-        underlingId: underlingId,
-        underlingName: underlingName,
-        score1: selectedScores[1],
-        score2: selectedScores[2],
-        score3: selectedScores[3],
-        score4: selectedScores[4],
-        score5: selectedScores[5],
-        score6: selectedScores[6],
-        comment: comment,
-        evalDate: getMinguoToday(),
-        signatureType: useSavedSig ? "saved" : "manual",
-        signatureBase64: sigBase64,
-        savedSignaturePath: currentUser.savedSignature
-      };
-      
-      document.getElementById('confirm-modal-text').innerText = `確定要送出對 [ ${underlingName} ] 的本月考核嗎？`;
+      pendingPayload = payload;
+      document.getElementById('confirm-modal-text').innerText = `確定要送出目前的審查單據嗎？送出後資料將直接變更流程至下一節點！`;
       document.getElementById('custom-confirm-modal').classList.remove('hidden');
-    }
-
-    function closeConfirmModal() {
-      document.getElementById('custom-confirm-modal').classList.add('hidden');
-      pendingPayload = null;
     }
 
     function executeSubmit() {
       if(!pendingPayload) return;
-      
-      const payloadToSend = pendingPayload; 
-      document.getElementById('custom-confirm-modal').classList.add('hidden'); 
-      
-      callAPI("submit", { formData: payloadToSend }, function(res) {
-        if(res.success) {
-          alert(res.message);
-          document.getElementById('underling-select').value = '';
-          document.getElementById('manager-comment').value = '';
-          document.getElementById('info-card-container').classList.add('hidden');
-          document.getElementById('evaluation-form-container').classList.add('hidden');
-          selectedScores = {};
-          activeRanges = {};
-          pendingPayload = null; 
-          clearSignatureCanvas();
-          renderMetrics();
-        } else {
-          alert("儲存失敗：" + res.message);
-          pendingPayload = null;
-        }
+      const data = pendingPayload; document.getElementById('custom-confirm-modal').classList.add('hidden');
+      callAPI("submitStage", { role: currentUser.role, formData: data }, function(res) {
+        if(res.success) { alert(res.message); logout(); } else { alert("儲存失敗：" + res.message); }
       });
     }
 
+    function isCanvasBlank(id) { if(!canvasMap[id]) return true; const blank = document.createElement('canvas'); blank.width = canvasMap[id].cvs.width; blank.height = canvasMap[id].cvs.height; return canvasMap[id].cvs.toDataURL() === blank.toDataURL(); }
+    function closeConfirmModal() { document.getElementById('custom-confirm-modal').classList.add('hidden'); pendingPayload = null; }
+    function getMinguoToday() { const today = new Date(); return (today.getFullYear() - 1911) + "/" + String(today.getMonth() + 1).padStart(2, '0') + "/" + String(today.getDate()).padStart(2, '0'); }
+    function showLoading(show) { document.getElementById('loading-spinner').classList[show ? 'remove' : 'add']('hidden'); }
+    function lockAllWorkflow() { document.getElementById('info-card-container').classList.add('hidden'); document.getElementById('workflow-box').classList.add('hidden'); document.getElementById('readonly-banner').classList.add('hidden'); }
+    
     function logout() {
-      currentUser = null;
-      subordinateCache = [];
-      selectedScores = {};
-      activeRanges = {};
-      pendingPayload = null;
-      document.getElementById('app-container').classList.add('hidden');
-      document.getElementById('login-container').classList.remove('hidden');
-      document.getElementById('emp-id').value = '';
-      document.getElementById('id-tail').value = '';
-      document.getElementById('manager-comment').value = '';
-      document.getElementById('underling-select').value = '';
-      document.getElementById('info-card-container').classList.add('hidden');
-      document.getElementById('evaluation-form-container').classList.add('hidden');
-      clearSignatureCanvas();
-      renderMetrics();
+      currentUser = null; subordinateCache = []; pendingFormCache = []; selectedScores = {}; pendingPayload = null; canvasMap = {}; isReadOnlyMode = false;
+      document.getElementById('app-container').classList.add('hidden'); document.getElementById('login-container').classList.remove('hidden');
+      document.getElementById('store-select-box').classList.add('hidden'); document.getElementById('reviewer-select-box').classList.add('hidden');
+      document.getElementById('section-edu').classList.add('hidden'); document.getElementById('section-vp').classList.add('hidden'); document.getElementById('section-gm').classList.add('hidden');
+      document.getElementById('emp-id').value = ''; document.getElementById('id-tail').value = '';
+      lockAllWorkflow(); renderMetrics();
     }
-
-    function showLoading(show) {
-      const spinner = document.getElementById('loading-spinner');
-      if(show) {
-        spinner.classList.remove('hidden');
-        document.body.style.overflow = "hidden"; 
-      } else {
-        spinner.classList.add('hidden');
-        document.body.style.overflow = ""; 
-      }
+    function callAPI(action, data, successCallback) {
+      const payload = Object.assign({ action: action }, data); showLoading(true);
+      fetch(GAS_API_URL, { method: "POST", body: JSON.stringify(payload) })
+      .then(res => res.json()).then(text => { showLoading(false); successCallback(text); })
+      .catch(err => { showLoading(false); alert("❌ 系統通訊失敗！原因：" + err.toString()); });
     }
   </script>
 </body>
