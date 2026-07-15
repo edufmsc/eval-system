@@ -2,6 +2,8 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <!-- 強制手機 1:1 滿版、禁止使用者手動放大縮小 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>鬍鬚張-月考核表</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -9,75 +11,78 @@
     .brand-bg { background-color: #E05315; }
     .brand-text { color: #E05315; }
     .brand-border { border-color: #E05315; }
+    /* 防止手寫簽名時，手機螢幕跟著滾動跑位 */
+    .touch-none { touch-action: none; }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen font-sans">
+<body class="bg-gray-100 min-h-screen font-sans w-full overflow-x-hidden">
 
   <!-- 1. 登入畫面 -->
-  <div id="login-container" class="flex flex-col items-center justify-center min-h-screen px-4">
-    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-8 brand-border">
+  <div id="login-container" class="flex flex-col items-center justify-center min-h-screen w-full px-4">
+    <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm border-t-8 brand-border">
       <div class="text-center mb-6">
-        <h1 class="text-2xl font-black text-gray-800 tracking-wider">鬍鬚張 FORMOSA CHANG</h1>
-        <p class="text-gray-500 mt-1 font-medium">代理店副理月考核系統</p>
+        <h1 class="text-xl font-black text-gray-800 tracking-wider">鬍鬚張 FORMOSA CHANG</h1>
+        <p class="text-xs text-gray-500 mt-1 font-medium">代理店副理月考核系統</p>
       </div>
       
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-bold text-gray-700 mb-1">員工工號</label>
+          <label class="block text-xs font-bold text-gray-700 mb-1">員工工號</label>
           <div class="relative">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
               <i class="fa-solid fa-user"></i>
             </span>
-            <input type="text" id="emp-id" placeholder="請輸入工號 (例：00888)" class="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-lg">
+            <!-- 確保 font-size 為 16px (text-base) 以上，防止 iOS 自動放大畫面 -->
+            <input type="text" id="emp-id" placeholder="請輸入工號 (例：00888)" class="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-base">
           </div>
         </div>
 
         <div>
-          <label class="block text-sm font-bold text-gray-700 mb-1">密碼 (身分證後 4 碼)</label>
+          <label class="block text-xs font-bold text-gray-700 mb-1">密碼 (身分證後 4 碼)</label>
           <div class="relative">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
               <i class="fa-solid fa-lock"></i>
             </span>
-            <input type="password" id="id-tail" placeholder="請輸入身分證後 4 碼" class="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-lg">
+            <input type="password" id="id-tail" placeholder="請輸入身分證後 4 碼" class="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-base">
           </div>
         </div>
 
-        <button onclick="handleLogin()" id="btn-login" class="w-full brand-bg text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:bg-orange-700 transition duration-200 text-lg">
+        <button onclick="handleLogin()" id="btn-login" class="w-full brand-bg text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:bg-orange-700 transition duration-200 text-base">
           <i class="fa-solid fa-right-to-bracket mr-2"></i>登入系統
         </button>
-        <p id="login-error" class="text-red-500 text-center font-bold mt-2 hidden"></p>
+        <p id="login-error" class="text-red-500 text-center font-bold text-sm mt-2 hidden"></p>
       </div>
     </div>
   </div>
 
   <!-- 2. 店長填寫考核表主畫面 -->
-  <div id="app-container" class="hidden pb-12">
-    <header class="brand-bg text-white py-4 px-6 shadow-md flex justify-between items-center sticky top-0 z-50">
+  <div id="app-container" class="hidden pb-12 w-full">
+    <header class="brand-bg text-white py-4 px-4 shadow-md flex justify-between items-center sticky top-0 z-50 w-full">
       <div>
-        <h2 class="text-lg font-black tracking-wide">代理店副理月考核表</h2>
-        <p class="text-xs opacity-90">表單編號：G-18-01-06-03</p>
+        <h2 class="text-base font-black tracking-wide">代理店副理月考核表</h2>
+        <p class="text-[10px] opacity-90">表單編號：G-18-01-06-03</p>
       </div>
       <div class="text-right">
-        <span id="user-info" class="font-bold text-sm block">載入中...</span>
-        <button onclick="logout()" class="text-xs bg-black bg-opacity-30 px-2 py-1 rounded hover:bg-opacity-50 mt-1">登出</button>
+        <span id="user-info" class="font-bold text-xs block">載入中...</span>
+        <button onclick="logout()" class="text-[10px] bg-black bg-opacity-30 px-2 py-0.5 rounded hover:bg-opacity-50 mt-1">登出</button>
       </div>
     </header>
 
-    <div class="max-w-xl mx-auto px-4 mt-6">
-      <div class="bg-white rounded-2xl shadow-md p-6 space-y-6">
+    <div class="w-full max-w-lg mx-auto px-4 mt-4">
+      <div class="bg-white rounded-2xl shadow-md p-4 space-y-5">
         
         <!-- 選擇學員 -->
         <div>
-          <label class="block text-sm font-black text-gray-700 mb-2">
+          <label class="block text-sm font-black text-gray-700 mb-1.5">
             <i class="fa-solid fa-user-check brand-text mr-1"></i> 請選擇受評儲備幹部：
           </label>
-          <select id="underling-select" onchange="onUnderlingChange()" class="w-full p-3 border-2 brand-border rounded-xl focus:outline-none text-lg font-bold bg-white">
+          <select id="underling-select" onchange="onUnderlingChange()" class="w-full p-2.5 border-2 brand-border rounded-xl focus:outline-none text-base font-bold bg-white">
             <option value="">-- 請選擇店內學員 --</option>
           </select>
         </div>
 
         <!-- 表頭資訊卡片 -->
-        <div id="info-card-container" class="hidden bg-orange-50 border-2 border-orange-200 rounded-xl p-4 text-sm space-y-2">
+        <div id="info-card-container" class="hidden bg-orange-50 border-2 border-orange-200 rounded-xl p-4 text-xs space-y-2">
           <div class="grid grid-cols-2 gap-2">
             <div><span class="font-bold text-gray-500">姓名：</span><span id="info-name" class="font-black text-gray-800">-</span></div>
             <div><span class="font-bold text-gray-500">單位/轄區：</span><span id="info-store" class="font-black text-gray-800">-</span></div>
@@ -91,18 +96,43 @@
         <hr class="border-dashed border-gray-300">
 
         <!-- 6大指標 -->
-        <h3 class="text-base font-black text-gray-800 border-l-4 brand-border pl-2">訓練單位主管每月填寫 (每項 10%)</h3>
-        <div class="space-y-6" id="score-section"></div>
+        <h3 class="text-sm font-black text-gray-800 border-l-4 brand-border pl-2">訓練單位主管每月填寫 (每項 10%)</h3>
+        <div class="space-y-5" id="score-section"></div>
 
         <!-- 綜合評語 -->
         <div>
-          <label class="block text-sm font-black text-gray-700 mb-2">
+          <label class="block text-sm font-black text-gray-700 mb-1.5">
             <i class="fa-solid fa-comment-dots brand-text mr-1"></i> 店經理評語：
           </label>
           <textarea id="manager-comment" rows="4" placeholder="請填寫對該學員本月的具體表現評價..." class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-base"></textarea>
         </div>
 
-        <button onclick="submitForm()" id="btn-submit" class="w-full brand-bg text-white font-bold py-4 rounded-xl shadow-lg text-lg hover:bg-orange-700 transition">
+        <!-- 【全新功能】店長手寫簽名板 -->
+        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+          <div class="flex justify-between items-center">
+            <label class="block text-sm font-black text-gray-700">
+              <i class="fa-solid fa-signature brand-text mr-1"></i> 店經理簽章：
+            </label>
+          </div>
+          
+          <!-- 如果有預存簽名，會顯示這個勾選框 -->
+          <div id="saved-sig-box" class="hidden">
+            <label class="inline-flex items-center cursor-pointer py-1">
+              <input type="checkbox" id="use-saved-sig" onchange="toggleSignatureType()" class="w-5 h-5 rounded text-orange-600 focus:ring-orange-500 border-gray-300">
+              <span class="ml-2 text-sm font-bold text-gray-700">使用系統預存簽名確認</span>
+            </label>
+          </div>
+
+          <!-- 手寫簽名畫布 -->
+          <div id="canvas-wrapper" class="relative bg-white border border-gray-300 rounded-xl overflow-hidden h-40">
+            <canvas id="signature-canvas" class="w-full h-full touch-none"></canvas>
+            <button type="button" onclick="clearSignatureCanvas()" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-lg transition shadow-sm">
+              <i class="fa-solid fa-eraser mr-1"></i>一鍵清除
+            </button>
+          </div>
+        </div>
+
+        <button onclick="submitForm()" id="btn-submit" class="w-full brand-bg text-white font-bold py-3.5 rounded-xl shadow-lg text-base hover:bg-orange-700 transition">
           <i class="fa-solid fa-paper-plane mr-2"></i>送出考核表
         </button>
       </div>
@@ -111,16 +141,16 @@
 
   <!-- 自訂確認彈窗 -->
   <div id="custom-confirm-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden px-4">
-    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm border-t-8 brand-border overflow-hidden">
-      <div class="p-6 text-center">
-        <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <i class="fa-solid fa-triangle-exclamation text-3xl brand-text"></i>
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-xs border-t-8 brand-border overflow-hidden">
+      <div class="p-5 text-center">
+        <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
+          <i class="fa-solid fa-triangle-exclamation text-2xl brand-text"></i>
         </div>
-        <h3 class="text-xl font-black text-gray-800 mb-2">確定送出考核嗎？</h3>
-        <p id="confirm-modal-text" class="text-gray-600 text-sm mb-6">確定要送出考核嗎？送出後店長將無法再修改分數！</p>
-        <div class="flex gap-3">
-          <button onclick="closeConfirmModal()" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition">取消</button>
-          <button onclick="executeSubmit()" class="flex-1 py-3 brand-bg hover:bg-orange-700 text-white font-bold rounded-xl shadow-md transition">確定送出</button>
+        <h3 class="text-lg font-black text-gray-800 mb-1">確定送出考核嗎？</h3>
+        <p id="confirm-modal-text" class="text-gray-500 text-xs mb-5">確定要送出考核嗎？送出後店長將無法再修改分數！</p>
+        <div class="flex gap-2">
+          <button onclick="closeConfirmModal()" class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition">取消</button>
+          <button onclick="executeSubmit()" class="flex-1 py-2.5 brand-bg hover:bg-orange-700 text-white font-bold rounded-xl text-sm shadow-md transition">確定送出</button>
         </div>
       </div>
     </div>
@@ -128,15 +158,15 @@
 
   <!-- Loading -->
   <div id="loading-spinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white p-6 rounded-2xl flex flex-col items-center">
-      <div class="animate-spin rounded-full h-12 w-12 border-t-4 brand-border border-gray-200"></div>
-      <p class="mt-3 font-bold text-gray-700 text-sm">處理中，請稍候...</p>
+    <div class="bg-white p-5 rounded-2xl flex flex-col items-center">
+      <div class="animate-spin rounded-full h-10 w-10 border-t-4 brand-border border-gray-200"></div>
+      <p class="mt-3 font-bold text-gray-700 text-xs">處理中，請稍候...</p>
     </div>
   </div>
 
   <script>
-    // 【在這裡貼上你複製的 Google Apps Script 正式網址 (/exec 結尾)】
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbysdFVEq81YuSme1wp72i_MePw2P2TkGPysYJ1gJEvC-58DTuzCkyZbwMddqjiBMTuJ/exec";
+    // 【請在此處替換為你公司帳號部署的最新 /exec 網址】
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyw65VvBqJydI5Tk3GmnGNU-eB0xRvYNWHpU9UzDDM81ERPT9izef5-iA-1sNBoKgP_DQ/exec";
 
     const metrics = [
       {
@@ -207,6 +237,10 @@
     let selectedScores = {};   
     let pendingPayload = null; 
 
+    // 手寫畫布相關變數
+    let canvas, ctx, isDrawing = false;
+    let sigCanvasInit = false;
+
     window.onload = function() {
       renderMetrics();
     };
@@ -224,7 +258,7 @@
               <button type="button" 
                       onclick="selectExactScore(event, ${m.id}, ${s}, ${r.min}, ${r.max})" 
                       id="btn-score-${m.id}-${s}" 
-                      class="px-4 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-bold text-gray-700 hover:border-orange-500 transition">
+                      class="px-3.5 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-bold text-gray-700 hover:border-orange-500 transition">
                 ${s}分
               </button>
             `;
@@ -235,11 +269,11 @@
                  onclick="clickRangeCard(${m.id}, ${r.min}, ${r.max})" 
                  class="p-3 border border-gray-200 rounded-xl bg-white cursor-pointer hover:bg-orange-50/50 hover:border-orange-300 transition duration-150">
               <div class="flex justify-between items-center mb-1">
-                <span class="text-xs font-black text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">${r.label}</span>
-                <span id="check-icon-${m.id}-${r.min}-${r.max}" class="text-orange-500 hidden"><i class="fa-solid fa-circle-check"></i></span>
+                <span class="text-[10px] font-black text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">${r.label}</span>
+                <span id="check-icon-${m.id}-${r.min}-${r.max}" class="text-orange-500 hidden"><i class="fa-solid fa-circle-check text-xs"></i></span>
               </div>
-              <p class="text-xs text-gray-700 font-medium mb-3">${r.text}</p>
-              <div class="flex flex-wrap gap-2">
+              <p class="text-xs text-gray-700 font-medium mb-2.5">${r.text}</p>
+              <div class="flex flex-wrap gap-1.5">
                 ${scoreButtons}
               </div>
             </div>
@@ -247,15 +281,15 @@
         });
         
         const card = `
-          <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-            <div class="flex justify-between items-center border-b pb-2">
-              <span class="font-black text-gray-800 text-base flex items-center">
-                <span class="w-1.5 h-5 brand-bg mr-2 rounded-full"></span>
+          <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-2.5">
+            <div class="flex justify-between items-center border-b pb-1.5">
+              <span class="font-black text-gray-800 text-sm flex items-center">
+                <span class="w-1.5 h-4.5 brand-bg mr-1.5 rounded-full"></span>
                 ${m.id}. ${m.title}
               </span>
-              <span id="final-badge-${m.id}" class="text-xs font-black bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">未評分</span>
+              <span id="final-badge-${m.id}" class="text-[10px] font-black bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">未評分</span>
             </div>
-            <div class="grid grid-cols-1 gap-3">
+            <div class="grid grid-cols-1 gap-2.5">
               ${rangesHTML}
             </div>
           </div>
@@ -270,7 +304,7 @@
       const prevScore = selectedScores[metricId];
       if (prevScore) {
         const prevBtn = document.getElementById(`btn-score-${metricId}-${prevScore}`);
-        if (prevBtn) prevBtn.className = "px-4 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-bold text-gray-700 hover:border-orange-500 transition";
+        if (prevBtn) prevBtn.className = "px-3.5 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-bold text-gray-700 hover:border-orange-500 transition";
       }
       
       if (activeRanges[metricId]) {
@@ -288,25 +322,98 @@
       if (currentCheck) currentCheck.classList.remove('hidden');
       
       const btn = document.getElementById(`btn-score-${metricId}-${score}`);
-      if (btn) btn.className = "px-4 py-1.5 brand-bg text-white border-transparent rounded-full text-xs font-bold shadow-md transition";
+      if (btn) btn.className = "px-3.5 py-1.5 brand-bg text-white border-transparent rounded-full text-xs font-bold shadow-md transition";
       
       selectedScores[metricId] = score;
       activeRanges[metricId] = key;
       
       const badge = document.getElementById(`final-badge-${metricId}`);
       badge.innerText = `${score} 分`;
-      badge.className = "text-xs font-black brand-bg text-white px-2.5 py-1 rounded-full shadow-sm";
+      badge.className = "text-[10px] font-black brand-bg text-white px-2 py-0.5 rounded-full shadow-sm";
     }
 
     function clickRangeCard(metricId, min, max) {
       selectExactScore(null, metricId, max, min, max);
     }
 
-    // 通用呼叫 API 工具 (核心：不經過 Google 登入驗證)
-    function callAPI(action, data, successCallback, errorCallback) {
-      const payload = Object.assign({ action: action }, data);
+    // 初始化手寫簽名板
+    function initSignatureCanvas() {
+      if (sigCanvasInit) return;
+      canvas = document.getElementById('signature-canvas');
+      ctx = canvas.getContext('2d');
       
-      // 使用 text/plain 避免觸發 CORS Preflight (最安全穩健的做法)
+      // 設定畫布解析度以防模糊
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      
+      ctx.strokeStyle = "#333333";
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      
+      // 滑鼠滑動事件
+      canvas.addEventListener('mousedown', (e) => {
+        isDrawing = true;
+        ctx.beginPath();
+        ctx.moveTo(e.clientX - canvas.getBoundingClientRect().left, e.clientY - canvas.getBoundingClientRect().top);
+      });
+      canvas.addEventListener('mousemove', (e) => {
+        if (!isDrawing) return;
+        ctx.lineTo(e.clientX - canvas.getBoundingClientRect().left, e.clientY - canvas.getBoundingClientRect().top);
+        ctx.stroke();
+      });
+      window.addEventListener('mouseup', () => { isDrawing = false; });
+      
+      // 手機觸控事件
+      canvas.addEventListener('touchstart', (e) => {
+        isDrawing = true;
+        const touch = e.touches[0];
+        ctx.beginPath();
+        ctx.moveTo(touch.clientX - canvas.getBoundingClientRect().left, touch.clientY - canvas.getBoundingClientRect().top);
+        e.preventDefault();
+      });
+      canvas.addEventListener('touchmove', (e) => {
+        if (!isDrawing) return;
+        const touch = e.touches[0];
+        ctx.lineTo(touch.clientX - canvas.getBoundingClientRect().left, touch.clientY - canvas.getBoundingClientRect().top);
+        ctx.stroke();
+        e.preventDefault();
+      }, { passive: false });
+      window.addEventListener('touchend', () => { isDrawing = false; });
+      
+      sigCanvasInit = true;
+    }
+
+    // 清除畫布 (一鍵清除)
+    function clearSignatureCanvas() {
+      if (!canvas) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // 預存簽章與手寫畫布切換
+    function toggleSignatureType() {
+      const isChecked = document.getElementById('use-saved-sig').checked;
+      const canvasWrapper = document.getElementById('canvas-wrapper');
+      if (isChecked) {
+        canvasWrapper.classList.add('hidden');
+      } else {
+        canvasWrapper.classList.remove('hidden');
+        initSignatureCanvas();
+      }
+    }
+
+    // 判斷畫布是否為空
+    function isCanvasBlank() {
+      if (!canvas) return true;
+      const blank = document.createElement('canvas');
+      blank.width = canvas.width;
+      blank.height = canvas.height;
+      return canvas.toDataURL() === blank.toDataURL();
+    }
+
+    // 通用呼叫 API 工具
+    function callAPI(action, data, successCallback) {
+      const payload = Object.assign({ action: action }, data);
       fetch(GAS_API_URL, {
         method: "POST",
         body: JSON.stringify(payload)
@@ -314,11 +421,8 @@
       .then(res => res.json())
       .then(resData => successCallback(resData))
       .catch(err => {
-        if(errorCallback) errorCallback(err);
-        else {
-          showLoading(false);
-          alert("系統連線異常，請稍後再試！");
-        }
+        showLoading(false);
+        alert("系統連線異常，請稍後再試！");
       });
     }
 
@@ -343,7 +447,20 @@
           currentUser = result;
           document.getElementById('login-container').classList.add('hidden');
           document.getElementById('app-container').classList.remove('hidden');
-          document.getElementById('user-info').innerText = `${result.name} (${result.title}) / ${result.store}`;
+          document.getElementById('user-info').innerText = `${result.name} (${result.title})`;
+          
+          // 如果有預存簽名，啟用勾選框並預設勾選
+          const savedSigBox = document.getElementById('saved-sig-box');
+          if (result.savedSignature && result.savedSignature.trim() !== "") {
+            savedSigBox.classList.remove('hidden');
+            document.getElementById('use-saved-sig').checked = true;
+            toggleSignatureType();
+          } else {
+            savedSigBox.classList.add('hidden');
+            document.getElementById('use-saved-sig').checked = false;
+            toggleSignatureType();
+          }
+          
           loadUnderlings(result.store);
         } else {
           errorEl.innerText = result.message;
@@ -395,6 +512,7 @@
       const underlingId = underlingSelect.value;
       const underlingName = document.getElementById('info-name').innerText;
       const comment = document.getElementById('manager-comment').value.trim();
+      const useSavedSig = document.getElementById('use-saved-sig').checked;
       
       if(!underlingId) {
         alert("請先選擇要考核的學員！");
@@ -412,6 +530,16 @@
         alert("請填寫店經理評語！");
         return;
       }
+
+      // 簽名完整性驗證
+      let sigBase64 = "";
+      if (!useSavedSig) {
+        if (isCanvasBlank()) {
+          alert("請在下方手寫板簽名，或勾選使用系統預存簽名！");
+          return;
+        }
+        sigBase64 = canvas.toDataURL(); // 將手寫畫布轉為 base64 圖片字串
+      }
       
       pendingPayload = {
         managerId: currentUser.empId,
@@ -425,7 +553,10 @@
         score5: selectedScores[5],
         score6: selectedScores[6],
         comment: comment,
-        evalDate: getMinguoToday()
+        evalDate: getMinguoToday(),
+        signatureType: useSavedSig ? "saved" : "manual",
+        signatureBase64: sigBase64,
+        savedSignaturePath: currentUser.savedSignature
       };
       
       document.getElementById('confirm-modal-text').innerText = `確定要送出對 [ ${underlingName} ] 的本月考核嗎？送出後店長將無法再修改分數！`;
@@ -451,6 +582,7 @@
           document.getElementById('info-card-container').classList.add('hidden');
           selectedScores = {};
           activeRanges = {};
+          clearSignatureCanvas();
           renderMetrics();
         } else {
           alert("儲存失敗：" + res.message);
@@ -470,6 +602,7 @@
       document.getElementById('manager-comment').value = '';
       document.getElementById('underling-select').value = '';
       document.getElementById('info-card-container').classList.add('hidden');
+      clearSignatureCanvas();
       renderMetrics();
     }
 
