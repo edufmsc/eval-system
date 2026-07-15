@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>鬍鬚張-月考核系統 (電腦專用版)</title>
+  <title>鬍鬚張-月考核表 (電腦專用版)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
@@ -15,6 +15,7 @@
 </head>
 <body class="bg-gray-100 min-h-screen font-sans w-full overflow-x-hidden flex flex-col items-center justify-center">
 
+  <!-- 1. 登入畫面 -->
   <div id="login-container" class="flex flex-col items-center justify-center min-h-screen w-full px-4">
     <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-8 brand-border">
       <div class="text-center mb-6">
@@ -47,6 +48,7 @@
     </div>
   </div>
 
+  <!-- 2. 主表單畫面 -->
   <div id="app-container" class="hidden pb-12 w-full">
     <header class="brand-bg text-white py-4 px-6 shadow-md flex justify-between items-center sticky top-0 z-50 w-full">
       <div>
@@ -62,6 +64,7 @@
     <div class="w-full max-w-6xl mx-auto px-6 mt-8">
       <div class="bg-white rounded-2xl shadow-md p-8 space-y-6">
         
+        <!-- 下拉選擇區 -->
         <div class="grid grid-cols-1 gap-4">
           <div id="store-select-box" class="hidden">
             <label class="block text-base font-black text-gray-700 mb-2"><i class="fa-solid fa-user-check brand-text mr-1"></i> 請選擇店內受評儲備幹部：</label>
@@ -74,18 +77,20 @@
           </div>
         </div>
 
+        <!-- 🔒 歷史唯讀查閱提示條 (解決問題1) -->
         <div id="readonly-banner" class="hidden p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl text-amber-900 font-bold flex items-center gap-3">
           <i class="fa-solid fa-circle-info text-2xl text-amber-500 animate-pulse"></i>
           <div>
             <p class="text-base" id="banner-text">📢 本月已完成考核起單！</p>
-            <p class="text-xs text-amber-700 font-medium mt-0.5">目前處於【唯讀查閱進度模式】，店長無法再次對該同仁重複打分與重寫。</p>
+            <p class="text-xs text-amber-700 font-medium mt-0.5">目前處於【唯讀查閱進度模式】，店長可查閱下方給分與內容，無法重複起單。</p>
           </div>
         </div>
 
+        <!-- 基本資料卡片 (解決問題3) -->
         <div id="info-card-container" class="hidden bg-orange-50 border-2 border-orange-200 rounded-xl p-5 text-base space-y-2">
           <div class="grid grid-cols-2 gap-4">
             <div><span class="font-bold text-gray-500">受評姓名：</span><span id="info-name" class="font-black text-gray-800">-</span></div>
-            <div><span class="font-bold text-gray-500">所屬店別：</span><span id="info-store" class="font-black text-gray-800">-</span></div>
+            <div><span class="font-bold text-gray-500">單位/轄區：</span><span id="info-store" class="font-black text-gray-800">-</span></div>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div><span class="font-bold text-gray-500">轉任日期：</span><span id="info-transfer" class="font-black text-gray-800">-</span></div>
@@ -93,8 +98,35 @@
           </div>
         </div>
 
+        <!-- 📊 總分即時計算看板 (無論在哪階段都要顯示，解決問題3) -->
+        <div id="score-summary-card" class="hidden bg-slate-900 text-white rounded-2xl p-6 shadow-lg border-2 border-slate-700 space-y-4">
+          <h3 class="text-base font-black border-b border-slate-700 pb-2 flex items-center gap-2">
+            <i class="fa-solid fa-calculator text-orange-400"></i> 考核總得分即時運算
+          </h3>
+          <div class="grid grid-cols-4 gap-4 text-center">
+            <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
+              <p class="text-[10px] text-slate-400 font-bold mb-1">店鋪主管 (60%)</p>
+              <p class="text-lg font-black text-white"><span id="sum-mgr">0</span> <span class="text-xs text-slate-400">/ 60分</span></p>
+            </div>
+            <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
+              <p class="text-[10px] text-slate-400 font-bold mb-1">教育中心 (40%)</p>
+              <p class="text-lg font-black text-white"><span id="sum-edu">0</span> <span class="text-xs text-slate-400">/ 40分</span></p>
+            </div>
+            <div class="bg-slate-800 p-3 rounded-xl border border-slate-700">
+              <p class="text-[10px] text-slate-400 font-bold mb-1">區主管加減分</p>
+              <p class="text-lg font-black text-orange-400"><span id="sum-adjust">0</span> <span class="text-xs text-slate-400">分</span></p>
+            </div>
+            <div class="bg-slate-900 p-3 rounded-xl border-2 border-orange-500/50">
+              <p class="text-[10px] text-orange-400 font-black mb-1">目前考核累計總得分</p>
+              <p class="text-2xl font-black text-orange-400"><span id="sum-grand">0</span> <span class="text-xs text-slate-400">/ 100分</span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 總流程大盒子 -->
         <div id="workflow-box" class="hidden space-y-8">
           
+          <!-- 關卡【一】：店長考核指標 (60%) -->
           <div id="section-manager" class="space-y-4">
             <hr class="border-dashed border-gray-300">
             <h3 class="text-lg font-black text-gray-800 border-l-4 brand-border pl-3">第一關：訓練單位主管填寫 (每項 10%，共 60%)</h3>
@@ -117,16 +149,17 @@
             </div>
           </div>
 
+          <!-- 關卡【二】：教育中心成果認證 (40%) -->
           <div id="section-edu" class="hidden space-y-4 bg-orange-50/30 p-6 rounded-2xl border border-orange-100">
             <hr class="border-dashed border-gray-300">
             <h3 class="text-lg font-black text-gray-800 border-l-4 border-amber-500 pl-3">第二關：教育中心考核填寫 (學習成果階段，共 40%)</h3>
             <div class="grid grid-cols-4 gap-4">
-              <div><label class="block text-sm font-bold text-gray-700 mb-1">職能積分認證 (15%)</label><input type="number" id="edu-score1" class="w-full p-2.5 border border-gray-300 rounded-xl text-base" placeholder="請輸入實得分"></div>
-              <div><label class="block text-sm font-bold text-gray-700 mb-1">OJT 手冊進度 (10%)</label><input type="number" id="edu-score2" class="w-full p-2.5 border border-gray-300 rounded-xl text-base" placeholder="請輸入實得分"></div>
-              <div><label class="block text-sm font-bold text-gray-700 mb-1">每週進度回報 (5%)</label><input type="number" id="edu-score3" class="w-full p-2.5 border border-gray-300 rounded-xl text-base" placeholder="請輸入實得分"></div>
-              <div><label class="block text-sm font-bold text-gray-700 mb-1">培訓課程狀況 (10%)</label><input type="number" id="edu-score4" class="w-full p-2.5 border border-gray-300 rounded-xl text-base" placeholder="請輸入實得分"></div>
+              <div><label class="block text-sm font-bold text-gray-700 mb-1">職能積分認證 (15%)</label><input type="number" id="edu-score1" onkeyup="updateTotalScore()" class="w-full p-2.5 border border-gray-300 rounded-xl text-base" placeholder="實得分"></div>
+              <div><label class="block text-sm font-bold text-gray-700 mb-1">OJT 手冊進度 (10%)</label><input type="number" id="edu-score2" onkeyup="updateTotalScore()" class="w-full p-2.5 border border-gray-300 rounded-xl text-base" placeholder="實得分"></div>
+              <div><label class="block text-sm font-bold text-gray-700 mb-1">每週進度回報 (5%)</label><input type="number" id="edu-score3" onkeyup="updateTotalScore()" class="w-full p-2.5 border border-gray-300 rounded-xl text-base" placeholder="實得分"></div>
+              <div><label class="block text-sm font-bold text-gray-700 mb-1">培訓課程狀況 (10%)</label><input type="number" id="edu-score4" onkeyup="updateTotalScore()" class="w-full p-2.5 border border-gray-300 rounded-xl text-base" placeholder="實得分"></div>
             </div>
-            <div class="w-full"><label class="block text-sm font-bold text-red-600 mb-1">⚠️ 教育中心異常回報欄位：</label><textarea id="edu-comment" class="w-full p-3 border border-red-300 rounded-xl text-base h-24 resize-none" placeholder="請詳細記錄培訓期間發生的店鋪或學員異常狀況..."></textarea></div>
+            <div class="w-full"><label class="block text-sm font-bold text-red-600 mb-1">⚠️ 教育中心異常回報欄位：</label><textarea id="edu-comment" class="w-full p-3 border border-red-300 rounded-xl text-base h-24 resize-none" placeholder="異常回報狀況..."></textarea></div>
             <div id="sig-block-edu" class="bg-white p-4 rounded-xl border border-gray-200 space-y-2">
               <label class="block text-sm font-bold text-gray-700">教育中心負責人簽章：</label>
               <div class="relative bg-white border border-gray-300 rounded-xl overflow-hidden h-36 w-full">
@@ -136,10 +169,56 @@
             </div>
           </div>
 
+          <!-- 關卡【三】：區主管審核 (解決問題4) -->
+          <div id="section-area" class="hidden space-y-4 bg-sky-50/30 p-6 rounded-2xl border border-sky-100">
+            <hr class="border-dashed border-gray-300">
+            <h3 class="text-lg font-black text-sky-900 border-l-4 border-sky-500 pl-3">第三關：區主管考評審核</h3>
+            <div class="grid grid-cols-1 gap-4">
+              <div>
+                <label class="block text-sm font-bold text-sky-800 mb-1">依學員表現分數調整 (加減 10 分得欄位)：</label>
+                <select id="area-adjust-score" onchange="updateTotalScore()" class="w-full p-3 border border-gray-300 rounded-xl text-base font-bold">
+                  <option value="0">不增減 (0分)</option>
+                  <option value="10">優異：+10 分</option>
+                  <option value="9">優異：+9 分</option>
+                  <option value="8">優異：+8 分</option>
+                  <option value="7">優異：+7 分</option>
+                  <option value="6">優異：+6 分</option>
+                  <option value="5">適任：+5 分</option>
+                  <option value="4">適任：+4 分</option>
+                  <option value="3">適任：+3 分</option>
+                  <option value="2">適任：+2 分</option>
+                  <option value="1">適任：+1 分</option>
+                  <option value="-1">待觀察：-1 分</option>
+                  <option value="-2">待觀察：-2 分</option>
+                  <option value="-3">待觀察：-3 分</option>
+                  <option value="-4">待觀察：-4 分</option>
+                  <option value="-5">待觀察：-5 分</option>
+                  <option value="-6">不及格：-6 分</option>
+                  <option value="-7">不及格：-7 分</option>
+                  <option value="-8">不及格：-8 分</option>
+                  <option value="-9">不及格：-9 分</option>
+                  <option value="-10">不及格：-10 分</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-sky-800 mb-1">區主管評語：</label>
+                <textarea id="area-comment" class="w-full p-3 border border-sky-200 rounded-xl text-base h-24 resize-none" placeholder="請詳細輸入區主管審查評語..."></textarea>
+              </div>
+            </div>
+            <div id="sig-block-area" class="bg-white p-4 rounded-xl border border-gray-200 space-y-2">
+              <label class="block text-sm font-bold text-gray-700">區主管核章：</label>
+              <div class="relative bg-white border border-gray-300 rounded-xl overflow-hidden h-36 w-full">
+                <canvas id="signature-canvas-area" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas>
+                <button type="button" onclick="clearSig('signature-canvas-area')" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 text-gray-700 text-xs font-bold rounded-lg"><i class="fa-solid fa-eraser mr-1"></i>清除</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 關卡【五】：營業副總核記 -->
           <div id="section-vp" class="hidden space-y-4 bg-teal-50/20 p-6 rounded-2xl border border-teal-100">
             <hr class="border-dashed border-gray-300">
             <h3 class="text-lg font-black text-gray-800 border-l-4 border-teal-600 pl-3">第五關：營業副總簽核審查</h3>
-            <div class="w-full"><label class="block text-sm font-bold text-teal-800 mb-1">營業副總裁決評語：</label><textarea id="vp-comment" class="w-full p-3 border border-teal-300 rounded-xl text-base h-24 resize-none" placeholder="請輸入對本考核案的批示評語..."></textarea></div>
+            <div class="w-full"><label class="block text-sm font-bold text-teal-800 mb-1">營業副總裁決評語：</label><textarea id="vp-comment" class="w-full p-3 border border-teal-300 rounded-xl text-base h-24 resize-none" placeholder="營業副總核示評語..."></textarea></div>
             <div id="sig-block-vp" class="bg-white p-4 rounded-xl border border-gray-200 space-y-2">
               <label class="block text-sm font-bold text-gray-700">營業副總核章：</label>
               <div class="relative bg-white border border-gray-300 rounded-xl overflow-hidden h-36 w-full">
@@ -149,6 +228,7 @@
             </div>
           </div>
 
+          <!-- 關卡【六】：總經理核定 -->
           <div id="section-gm" class="hidden space-y-4 bg-purple-50/20 p-6 rounded-2xl border border-purple-100">
             <hr class="border-dashed border-gray-300">
             <h3 class="text-lg font-black text-purple-900 border-l-4 border-purple-700 pl-3">👑 第六關：總經理最高裁決核定</h3>
@@ -161,6 +241,7 @@
             </div>
           </div>
 
+          <!-- 統一提交按鈕 -->
           <button id="btn-submit-main" onclick="submitForm()" class="w-full brand-bg text-white font-bold py-4 rounded-xl shadow-lg text-lg hover:bg-orange-700 transition"><i class="fa-solid fa-paper-plane mr-2"></i>確認並送出本關卡資料</button>
         </div>
 
@@ -168,11 +249,12 @@
     </div>
   </div>
 
+  <!-- 確認彈窗 -->
   <div id="custom-confirm-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden px-4">
     <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm border-t-8 brand-border overflow-hidden">
       <div class="p-6 text-center">
         <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-triangle-exclamation text-3xl brand-text"></i></div>
-        <h3 class="text-xl font-black text-gray-800 mb-2">確定送出考核嗎？</h3>
+        <h3 class="text-xl font-black text-gray-800 mb-2">確定送出審查嗎？</h3>
         <p id="confirm-modal-text" class="text-gray-600 text-sm leading-relaxed mb-6">確定要送出考核嗎？送出後資料將無法再修改！</p>
         <div class="flex gap-3">
           <button onclick="closeConfirmModal()" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition">取消</button>
@@ -182,6 +264,7 @@
     </div>
   </div>
 
+  <!-- Loading -->
   <div id="loading-spinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] pointer-events-auto hidden">
     <div class="bg-white p-6 rounded-2xl flex flex-col items-center shadow-2xl">
       <div class="animate-spin rounded-full h-12 w-12 border-t-4 brand-border border-gray-200"></div>
@@ -197,12 +280,12 @@
       { id: 2, title: "協調性", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "能主動與人協調與上級員維持和諧關係,同事極願與其合作。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "能與人和諧相處,願接納他人意見而不固執,偶亦屬熱心助人。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "雖不特別致力於他人協調,但亦不與他人發生爭執與摩擦。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "缺乏協調與同事間偶爾會摩擦。" }] },
       { id: 3, title: "表達能力", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "文筆、言談、論理明確,能化繁為簡,密而不漏。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "表達有條理,使人易於了解。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "表達平平,大致可了解其意,不致引人誤解。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "文筆生硬言談欠明確不易讓人了解。" }] },
       { id: 4, title: "學習態度", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "針對突發狀況,能主動積極提出疑問虛心求救。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "能誠懇接受他人教導,但主動較弱。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "能誠懇接受他人教導,但主動較弱。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "不能主動學習,須加以督導。" }] },
-      { id: 5, title: "解決問題能力", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "針對可能發生之問題,極求解,並予以解決。能迅速謀求改善對策,需督促即可完成。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "具有解決問題之能力,打須督促完成。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "能謀求改善之道,但無擔當之魄力。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "無法迅速謀求改善對策,並有逃避之現象。" }] },
+      { id: 5, title: "解決問題能力", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "針對可能發生之問題,極求解,並予以解決。能迅速謀求改善對策,需督促即可完成。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "具有解決問題之能力,但須督促完成。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "能謀求改善之道,但無擔當之魄力。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "無法迅速謀求改善對策,並有逃避之現象。" }] },
       { id: 6, title: "個人儀容", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "整齊清潔,端正足為模範。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "重視清潔衛生。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "達到基本要求。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "我行我素,須經常糾正才會改進。" }] }
     ];
 
     let currentUser = null, subordinateCache = [], pendingFormCache = [], activeRanges = {}, selectedScores = {}, pendingPayload = null;
-    let activeCanvasId = null, canvasMap = {}, isReadOnlyMode = false;
+    let canvasMap = {}, isReadOnlyMode = false;
 
     window.onload = function() { renderMetrics(); };
 
@@ -221,9 +304,10 @@
       });
     }
 
-    function selectExactScore(event, metricId, score, min, max) {
+    // 🌟 解決問題 1：加入 force 強制設定，繞過唯讀限制進行數據呈現
+    function selectExactScore(event, metricId, score, min, max, force = false) {
       if(event) event.stopPropagation();
-      if(isReadOnlyMode) return; // 🔒 唯讀攔截
+      if(isReadOnlyMode && !force) return; 
 
       const prevScore = selectedScores[metricId];
       if (prevScore) {
@@ -250,13 +334,16 @@
       selectedScores[metricId] = score; activeRanges[metricId] = key;
       const badge = document.getElementById('final-badge-' + metricId);
       if (badge) { badge.innerText = `${score} 分`; badge.className = "text-xs font-black brand-bg text-white px-2.5 py-1 rounded-full shadow-sm"; }
+      
+      updateTotalScore(); // 點擊分數即時加總
     }
     function clickRangeCard(metricId, min, max) { selectExactScore(null, metricId, max, min, max); }
 
-    // 🌟 固定解析度滑鼠/觸控萬能繪圖器 (徹底防止偏移與重置洗白)
+    // 🌟 萬能無偏差固定解析度手寫繪圖系統
     function initCanvasDevice(id) {
       if (canvasMap[id]) return;
-      let cvs = document.getElementById(id); let ctx = cvs.getContext('2d');
+      let cvs = document.getElementById(id); if(!cvs) return;
+      let ctx = cvs.getContext('2d');
       ctx.strokeStyle = "#333333"; ctx.lineWidth = 4; ctx.lineCap = "round";
       let drawing = false;
       
@@ -278,6 +365,35 @@
     }
     function clearSig(id) { if(canvasMap[id]) canvasMap[id].ctx.clearRect(0,0,canvasMap[id].cvs.width,canvasMap[id].cvs.height); }
 
+    // 🌟 解決問題3、4：不管在哪個階段，通通即時算總分！
+    function updateTotalScore() {
+      let mgrTotal = 0;
+      for (let i = 1; i <= 6; i++) {
+        if (selectedScores[i]) mgrTotal += parseInt(selectedScores[i]);
+      }
+      
+      let edu1 = parseFloat(document.getElementById('edu-score1').value) || 0;
+      let edu2 = parseFloat(document.getElementById('edu-score2').value) || 0;
+      let edu3 = parseFloat(document.getElementById('edu-score3').value) || 0;
+      let edu4 = parseFloat(document.getElementById('edu-score4').value) || 0;
+      let eduTotal = edu1 + edu2 + edu3 + edu4;
+      
+      let adjustVal = 0;
+      const adjustSelect = document.getElementById('area-adjust-score');
+      if (adjustSelect) {
+        adjustVal = parseInt(adjustSelect.value) || 0;
+      } else if (window.loadedAdjustValue !== undefined) {
+        adjustVal = window.loadedAdjustValue;
+      }
+      
+      let grandTotal = mgrTotal + eduTotal + adjustVal;
+      
+      document.getElementById('sum-mgr').innerText = mgrTotal;
+      document.getElementById('sum-edu').innerText = eduTotal;
+      document.getElementById('sum-adjust').innerText = (adjustVal >= 0 ? '+' : '') + adjustVal;
+      document.getElementById('sum-grand').innerText = grandTotal;
+    }
+
     function handleLogin() {
       const empId = document.getElementById('emp-id').value.trim();
       const idTail = document.getElementById('id-tail').value.trim();
@@ -291,30 +407,16 @@
           currentUser = result;
           document.getElementById('login-container').classList.add('hidden');
           document.getElementById('app-container').classList.remove('hidden');
-          document.getElementById('user-info').innerText = `${result.name} (${result.role})`;
+          document.getElementById('user-info').innerText = `${result.name} (${result.title})`;
           document.getElementById('system-title').innerText = `鬍鬚張月考核系統 ── 【${result.role}端】`;
           
           if(result.role === "店長") {
             document.getElementById('store-select-box').classList.remove('hidden');
-            callAPI("getUnderlings", { store: result.store }, function(list) {
-              subordinateCache = list;
-              const select = document.getElementById('underling-select');
-              select.innerHTML = '<option value="">-- 請選擇店內學員 --</option>';
-              list.forEach(u => {
-                let tag = u.alreadyEval ? ` [本月已起單 - ${u.currentStatus}]` : '';
-                select.innerHTML += `<option value="${u.empId}">${u.name} (${u.empId})${tag}</option>`;
-              });
-            });
+            loadUnderlings(result.store);
             if (result.savedSignature) document.getElementById('saved-sig-box').classList.remove('hidden');
           } else {
-            // 審核主管端選單 (教育中心 / 區主管 / 副總 / 總經理)
             document.getElementById('reviewer-select-box').classList.remove('hidden');
-            callAPI("getPendingForms", { role: result.role, dept: result.dept, area: result.area, empId: result.empId }, function(list) {
-              pendingFormCache = list;
-              const select = document.getElementById('pending-form-select');
-              select.innerHTML = `<option value="">-- 您目前有 ${list.length} 筆待處理考核單，請選擇 --</option>`;
-              list.forEach((f, idx) => { select.innerHTML += `<option value="${idx}">${f.month} 考核單：${f.underlingName} (${f.store})</option>`; });
-            });
+            reloadPendingList();
           }
         } else {
           errorEl.innerText = result.message; errorEl.classList.remove('hidden');
@@ -322,7 +424,35 @@
       });
     }
 
-    // 🌟 店長選擇學員：查閱查核與自動防重複起單鎖定 (解決問題1、問題3)
+    // 解決問題 2：審核人員不登出，只默默刷新待處理選單
+    function reloadPendingList() {
+      lockAllWorkflow();
+      document.getElementById('pending-form-select').value = '';
+      callAPI("getPendingForms", { role: currentUser.role, dept: currentUser.dept, area: currentUser.area, empId: currentUser.empId }, function(list) {
+        pendingFormCache = list;
+        const select = document.getElementById('pending-form-select');
+        select.innerHTML = `<option value="">-- 您目前有 ${list.length} 筆待處理考核單，請選擇 --</option>`;
+        list.forEach((f, idx) => { select.innerHTML += `<option value="${idx}">${f.month} 考核單：${f.underlingName} (${f.store})</option>`; });
+      });
+    }
+
+    function loadUnderlings(store) {
+      callAPI("getUnderlings", { store: store }, function(list) {
+        subordinateCache = list;
+        const select = document.getElementById('underling-select');
+        select.innerHTML = '<option value="">-- 請選擇店內學員 --</option>';
+        if (!list || list.length === 0) {
+          alert("⚠️ 系統提示：分店 [ " + store + " ] 目前在【員工主檔】中沒有任何需寫考核表學員項目！");
+          return;
+        }
+        list.forEach(u => {
+          let tag = u.alreadyEval ? ` [本月已起單 - ${u.currentStatus}]` : '';
+          select.innerHTML += `<option value="${u.empId}">${u.name} (${u.empId})${tag}</option>`;
+        });
+      });
+    }
+
+    // 🌟 店長端：本期/上期唯讀歷史查閱與防重複鎖定 100% 實現 (解決問題 1)
     function onUnderlingChange() {
       const selectedId = document.getElementById('underling-select').value;
       if (!selectedId) return lockAllWorkflow();
@@ -332,35 +462,42 @@
       document.getElementById('info-store').innerText = sub.store;
       document.getElementById('info-transfer').innerText = sub.transferDate || "-";
       document.getElementById('info-eval-date').innerText = sub.alreadyEval ? sub.evalDate : getMinguoToday();
+      
       document.getElementById('info-card-container').classList.remove('hidden');
+      document.getElementById('score-summary-card').classList.remove('hidden');
       document.getElementById('workflow-box').classList.remove('hidden');
       document.getElementById('section-manager').classList.remove('hidden');
 
       if (sub.alreadyEval) {
-        isReadOnlyMode = true;
+        // 🔒 唯讀模式：先渲染資料，最後再開鎖，完美解決問題 1 的顯示 Bug
+        isReadOnlyMode = false; 
         document.getElementById('readonly-banner').classList.remove('hidden');
-        document.getElementById('banner-text').innerText = `📢 該同仁本月已起單！表單目前已推進至：【${sub.currentStatus}】`;
-        document.getElementById('btn-submit-main').classList.add('hidden'); // 拔除送出鍵，徹底鎖死防止重寫
+        document.getElementById('banner-text').innerText = `📢 該同仁本月已起單！進度：【${sub.currentStatus}】`;
+        document.getElementById('btn-submit-main').classList.add('hidden'); // 徹底鎖死重複提交
         
-        for(let i=1; i<=6; i++) { selectExactScore(null, i, sub.historyData.scores[i-1], 1, 10); }
+        for(let i=1; i<=6; i++) { selectExactScore(null, i, sub.historyData.scores[i-1], 1, 10, true); }
         document.getElementById('manager-comment').value = sub.historyData.comment;
         document.getElementById('manager-comment').disabled = true;
         document.getElementById('manager-comment').classList.add('bg-gray-100','text-gray-500');
-        document.getElementById('canvas-wrapper-manager').innerHTML = `<p class="p-4 text-xs font-black text-gray-500 bg-gray-50 rounded-xl">店長已核章送出。簽名路徑：<a href="${sub.historyData.sig}" target="_blank" class="text-blue-500 underline">點擊查閱起單簽名檔</a></p>`;
+        document.getElementById('canvas-wrapper-manager').innerHTML = `<p class="p-4 text-xs font-black text-gray-500 bg-gray-50 rounded-xl">店長已核章確認。歷史簽名：<a href="${sub.historyData.sig}" target="_blank" class="text-blue-500 underline">點擊查閱起單簽名檔</a></p>`;
+        
+        isReadOnlyMode = true; // 最後鎖上唯讀鎖
+        updateTotalScore();
       } else {
         isReadOnlyMode = false;
         document.getElementById('readonly-banner').classList.add('hidden');
         document.getElementById('btn-submit-main').classList.remove('hidden');
         document.getElementById('manager-comment').value = ''; document.getElementById('manager-comment').disabled = false;
         document.getElementById('manager-comment').className = "w-full p-4 border border-gray-300 rounded-xl text-base h-32 resize-y";
-        document.getElementById('canvas-wrapper-manager').innerHTML = `<canvas id="signature-canvas" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas><button type="button" onclick="clearSig('signature-canvas')" class="absolute bottom-3 right-3 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-bold rounded-lg transition shadow-md"><i class="fa-solid fa-eraser mr-1"></i>一鍵清除</button>`;
+        document.getElementById('canvas-wrapper-manager').innerHTML = `<canvas id="signature-canvas" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas><button type="button" onclick="clearSig('signature-canvas')" class="absolute bottom-3 right-3 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-bold rounded-lg transition shadow-md"><i class="fa-solid fa-eraser mr-1"></i>清除</button>`;
         
         selectedScores = {}; activeRanges = {}; renderMetrics();
         initCanvasDevice('signature-canvas'); toggleSignatureType();
+        updateTotalScore();
       }
     }
 
-    // 主管審核單點選變動 (前人資料灰色鎖死)
+    // 🌟 主管審核端：店長+教育中心+區主管資料灰色全展現 (解決問題4)
     function onPendingFormChange() {
       const idx = document.getElementById('pending-form-select').value;
       if (idx === "") return lockAllWorkflow();
@@ -372,45 +509,98 @@
       document.getElementById('info-transfer').innerText = "-";
       document.getElementById('info-eval-date').innerText = f.evalDate;
       document.getElementById('info-card-container').classList.remove('hidden');
+      document.getElementById('score-summary-card').classList.remove('hidden');
       document.getElementById('workflow-box').classList.remove('hidden');
       document.getElementById('btn-submit-main').classList.remove('hidden');
       
-      // 鎖死店長起單內容
+      // 1. 展現店長分數與內容
       document.getElementById('section-manager').classList.remove('hidden');
       document.getElementById('manager-comment').value = f.managerComment; document.getElementById('manager-comment').disabled = true;
       document.getElementById('manager-comment').classList.add('bg-gray-100','text-gray-500');
       document.getElementById('sig-block-manager').innerHTML = `<p class="text-xs font-bold text-gray-500">店長已核章：<a href="${f.managerSig}" target="_blank" class="text-blue-500 underline">查看店長簽名檔路徑</a></p>`;
-      for(let i=1; i<=6; i++) { const b = document.getElementById(`final-badge-${i}`); b.innerText = `${f.scores[i-1]} 分`; }
+      for(let i=1; i<=6; i++) { 
+        selectedScores[i] = f.scores[i-1];
+        const b = document.getElementById(`final-badge-${i}`); b.innerText = `${f.scores[i-1]} 分`; 
+      }
 
-      // 依身分開啟特定審查盒子
+      // 解析區主管可能存檔的增減分 Y 欄位
+      let loadedAdjustVal = 0;
+      let cleanAreaComment = f.areaComment || "";
+      if (f.areaComment) {
+        let match = f.areaComment.match(/【主管增減分：([+-]?\d+)分】\n?/);
+        if (match) {
+          loadedAdjustVal = parseInt(match[1]);
+          cleanAreaComment = f.areaComment.replace(match[0], "");
+        }
+      }
+      window.loadedAdjustValue = loadedAdjustVal;
+
+      // 2. 依身分開啟與填充後續表單
       const role = currentUser.role;
       if (role === "教育中心") {
         document.getElementById('section-edu').classList.remove('hidden');
+        document.getElementById('edu-score1').value = ''; document.getElementById('edu-score2').value = '';
+        document.getElementById('edu-score3').value = ''; document.getElementById('edu-score4').value = '';
+        document.getElementById('edu-comment').value = '';
+        document.getElementById('section-edu').querySelectorAll('input, textarea').forEach(el => el.disabled = false);
+        document.getElementById('sig-block-edu').innerHTML = `<label class="block text-sm font-bold text-gray-700">教育中心負責人簽章：</label><div class="relative bg-white border border-gray-300 rounded-xl overflow-hidden h-36 w-full"><canvas id="signature-canvas-edu" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas><button type="button" onclick="clearSig('signature-canvas-edu')" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 text-gray-700 text-xs font-bold rounded-lg"><i class="fa-solid fa-eraser mr-1"></i>清除</button></div>`;
         initCanvasDevice('signature-canvas-edu');
-      } else if (role === "營業副總") {
-        document.getElementById('section-edu').classList.remove('hidden');
-        document.getElementById('edu-score1').value = f.eduData.score1; document.getElementById('edu-score2').value = f.eduData.score2;
-        document.getElementById('edu-score3').value = f.eduData.score3; document.getElementById('edu-score4').value = f.eduData.score4;
-        document.getElementById('edu-comment').value = f.eduData.comment;
-        document.getElementById('section-edu').querySelectorAll('input, textarea').forEach(el => el.disabled = true);
-        document.getElementById('sig-block-edu').innerHTML = `<p class="text-xs font-bold text-gray-500">教育中心已核章</p>`;
+      } 
+      else if (role === "區主管") {
+        // 教育中心(唯讀)
+        showEduSectionReadOnly(f);
+        // 區主管(可編輯)
+        document.getElementById('section-area').classList.remove('hidden');
+        document.getElementById('area-adjust-score').value = "0"; document.getElementById('area-adjust-score').disabled = false;
+        document.getElementById('area-comment').value = ""; document.getElementById('area-comment').disabled = false;
+        document.getElementById('sig-block-area').innerHTML = `<label class="block text-sm font-bold text-gray-700">區主管核章：</label><div class="relative bg-white border border-gray-300 rounded-xl overflow-hidden h-36 w-full"><canvas id="signature-canvas-area" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas><button type="button" onclick="clearSig('signature-canvas-area')" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 text-gray-700 text-xs font-bold rounded-lg"><i class="fa-solid fa-eraser mr-1"></i>清除</button></div>`;
+        initCanvasDevice('signature-canvas-area');
+      } 
+      else if (role === "營業副總") {
+        showEduSectionReadOnly(f);
+        showAreaSectionReadOnly(cleanAreaComment, loadedAdjustVal, f.areaComment ? f.areaComment : ""); // 區主管唯讀
         
         document.getElementById('section-vp').classList.remove('hidden');
+        document.getElementById('vp-comment').value = ''; document.getElementById('vp-comment').disabled = false;
+        document.getElementById('sig-block-vp').innerHTML = `<label class="block text-sm font-bold text-gray-700">營業副總核章：</label><div class="relative bg-white border border-gray-300 rounded-xl overflow-hidden h-36 w-full"><canvas id="signature-canvas-vp" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas><button type="button" onclick="clearSig('signature-canvas-vp')" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 text-gray-700 text-xs font-bold rounded-lg"><i class="fa-solid fa-eraser mr-1"></i>清除</button></div>`;
         initCanvasDevice('signature-canvas-vp');
-      } else if (role === "總經理") {
-        document.getElementById('section-edu').classList.remove('hidden');
-        document.getElementById('section-edu').querySelectorAll('input, textarea').forEach(el => el.disabled = true);
+      } 
+      else if (role === "總經理") {
+        showEduSectionReadOnly(f);
+        showAreaSectionReadOnly(cleanAreaComment, loadedAdjustVal, f.areaComment ? f.areaComment : "");
+        
         document.getElementById('section-vp').classList.remove('hidden');
         document.getElementById('vp-comment').value = f.vpComment; document.getElementById('vp-comment').disabled = true;
+        document.getElementById('sig-block-vp').innerHTML = `<p class="text-xs font-bold text-gray-500">營業副總已簽准</p>`;
         
         document.getElementById('section-gm').classList.remove('hidden');
+        document.getElementById('sig-block-gm').innerHTML = `<label class="block text-sm font-bold text-gray-700">總經理最高核定簽章：</label><div class="relative bg-white border border-gray-300 rounded-xl overflow-hidden h-36 w-full"><canvas id="signature-canvas-gm" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas><button type="button" onclick="clearSig('signature-canvas-gm')" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 text-gray-700 text-xs font-bold rounded-lg"><i class="fa-solid fa-eraser mr-1"></i>清除</button></div>`;
         initCanvasDevice('signature-canvas-gm');
       }
+      
+      updateTotalScore();
+    }
+
+    function showEduSectionReadOnly(f) {
+      document.getElementById('section-edu').classList.remove('hidden');
+      document.getElementById('edu-score1').value = f.eduData.score1; document.getElementById('edu-score2').value = f.eduData.score2;
+      document.getElementById('edu-score3').value = f.eduData.score3; document.getElementById('edu-score4').value = f.eduData.score4;
+      document.getElementById('edu-comment').value = f.eduData.comment;
+      document.getElementById('section-edu').querySelectorAll('input, textarea').forEach(el => el.disabled = true);
+      document.getElementById('sig-block-edu').innerHTML = `<p class="text-xs font-bold text-gray-500">教育中心已核章。核章路徑：<a href="${f.eduData.sig}" target="_blank" class="text-blue-500 underline">查看</a></p>`;
+    }
+
+    function showAreaSectionReadOnly(cleanComment, adjustVal, rawText) {
+      document.getElementById('section-area').classList.remove('hidden');
+      document.getElementById('area-adjust-score').innerHTML = `<option value="${adjustVal}">已加減分：${adjustVal >= 0 ? '+' : ''}${adjustVal}分</option>`;
+      document.getElementById('area-adjust-score').disabled = true;
+      document.getElementById('area-comment').value = cleanComment; document.getElementById('area-comment').disabled = true;
+      document.getElementById('sig-block-area').innerHTML = `<p class="text-xs font-bold text-gray-500">區主管已簽核。評審紀錄：${rawText}</p>`;
     }
 
     function toggleSignatureType() {
       const isChecked = document.getElementById('use-saved-sig').checked;
-      document.getElementById('canvas-wrapper').className = isChecked ? "hidden" : "relative bg-white border-2 border-gray-300 rounded-xl overflow-hidden h-44 w-full";
+      document.getElementById('canvas-wrapper-manager').className = isChecked ? "hidden" : "relative bg-white border-2 border-gray-300 rounded-xl overflow-hidden h-44 w-full";
     }
 
     function submitForm() {
@@ -421,7 +611,7 @@
         const useSavedSig = document.getElementById('use-saved-sig').checked;
         for(let i=1; i<=6; i++) { if(!selectedScores[i]) return alert(`請為第 ${i} 項給予確切評分！`); }
         if(!comment) return alert("請填寫店經理評語！");
-        if(!useSavedSig && isCanvasBlank('signature-canvas')) return alert("請在下方手寫板內完成滑鼠簽名！");
+        if(!useSavedSig && isCanvasBlank('signature-canvas')) return alert("請在下方手寫板內滑鼠簽名！");
         
         payload = {
           managerId: currentUser.empId, store: currentUser.store, underlingId: subId,
@@ -440,21 +630,32 @@
         if(isCanvasBlank('signature-canvas-edu')) return alert("請完成教育中心核章！");
         payload = { rowIndex: f.rowIndex, empId: currentUser.empId, edu1: sc1, edu2: sc2, edu3: sc3, edu4: sc4, eduComment: eduComment, signatureBase64: canvasMap['signature-canvas-edu'].cvs.toDataURL() };
       }
+      else if (role === "區主管") {
+        const selIdx = document.getElementById('pending-form-select').value; const f = pendingFormCache[selIdx];
+        const adjustVal = parseInt(document.getElementById('area-adjust-score').value) || 0;
+        const areaComment = document.getElementById('area-comment').value.trim();
+        if(!areaComment) return alert("請輸入區主管評語！");
+        if(isCanvasBlank('signature-canvas-area')) return alert("請在手寫板完成區主管簽章！");
+        
+        // 增減分與評語智慧合併，不額外開闢欄位防炸 Excel
+        let combinedComment = `【主管增減分：${adjustVal >= 0 ? '+' : ''}${adjustVal}分】\n${areaComment}`;
+        payload = { rowIndex: f.rowIndex, empId: currentUser.empId, areaComment: combinedComment, signatureBase64: canvasMap['signature-canvas-area'].cvs.toDataURL() };
+      }
       else if (role === "營業副總") {
         const selIdx = document.getElementById('pending-form-select').value; const f = pendingFormCache[selIdx];
         const vpComment = document.getElementById('vp-comment').value.trim();
-        if(!vpComment) return alert("請填寫副總裁決評語！");
-        if(isCanvasBlank('signature-canvas-vp')) return alert("請完成副總核章！");
+        if(!vpComment) return alert("請填寫副總核章評語！");
+        if(isCanvasBlank('signature-canvas-vp')) return alert("請完成副總簽核！");
         payload = { rowIndex: f.rowIndex, empId: currentUser.empId, vpComment: vpComment, signatureBase64: canvasMap['signature-canvas-vp'].cvs.toDataURL() };
       }
       else if (role === "總經理") {
         const selIdx = document.getElementById('pending-form-select').value; const f = pendingFormCache[selIdx];
-        if(isCanvasBlank('signature-canvas-gm')) return alert("請總經理點擊手寫板進行最終結案確認章！");
+        if(isCanvasBlank('signature-canvas-gm')) return alert("請總經理點擊手寫簽章完成結案！");
         payload = { rowIndex: f.rowIndex, empId: currentUser.empId, signatureBase64: canvasMap['signature-canvas-gm'].cvs.toDataURL() };
       }
 
       pendingPayload = payload;
-      document.getElementById('confirm-modal-text').innerText = `確定要送出目前的審查單據嗎？送出後資料將直接變更流程至下一節點！`;
+      document.getElementById('confirm-modal-text').innerText = `確定要送出本考核流程節點嗎？送出後將派發至下一流程端且不可再改！`;
       document.getElementById('custom-confirm-modal').classList.remove('hidden');
     }
 
@@ -462,7 +663,16 @@
       if(!pendingPayload) return;
       const data = pendingPayload; document.getElementById('custom-confirm-modal').classList.add('hidden');
       callAPI("submitStage", { role: currentUser.role, formData: data }, function(res) {
-        if(res.success) { alert(res.message); logout(); } else { alert("儲存失敗：" + res.message); }
+        if(res.success) { 
+          alert("🎉 " + res.message); 
+          if(currentUser.role === "店長") {
+            loadUnderlings(currentUser.store); logout(); 
+          } else {
+            reloadPendingList(); // 審核端不強制踢出，默默刷新並還原乾淨畫面，可點擊下一張
+          }
+        } else { 
+          alert("❌ 儲存失敗：" + res.message); 
+        }
       });
     }
 
@@ -470,13 +680,13 @@
     function closeConfirmModal() { document.getElementById('custom-confirm-modal').classList.add('hidden'); pendingPayload = null; }
     function getMinguoToday() { const today = new Date(); return (today.getFullYear() - 1911) + "/" + String(today.getMonth() + 1).padStart(2, '0') + "/" + String(today.getDate()).padStart(2, '0'); }
     function showLoading(show) { document.getElementById('loading-spinner').classList[show ? 'remove' : 'add']('hidden'); }
-    function lockAllWorkflow() { document.getElementById('info-card-container').classList.add('hidden'); document.getElementById('workflow-box').classList.add('hidden'); document.getElementById('readonly-banner').classList.add('hidden'); }
+    function lockAllWorkflow() { document.getElementById('info-card-container').classList.add('hidden'); document.getElementById('score-summary-card').classList.add('hidden'); document.getElementById('workflow-box').classList.add('hidden'); document.getElementById('readonly-banner').classList.add('hidden'); }
     
     function logout() {
-      currentUser = null; subordinateCache = []; pendingFormCache = []; selectedScores = {}; pendingPayload = null; canvasMap = {}; isReadOnlyMode = false;
+      currentUser = null; subordinateCache = []; pendingFormCache = []; selectedScores = {}; pendingPayload = null; canvasMap = {}; isReadOnlyMode = false; window.loadedAdjustValue = undefined;
       document.getElementById('app-container').classList.add('hidden'); document.getElementById('login-container').classList.remove('hidden');
       document.getElementById('store-select-box').classList.add('hidden'); document.getElementById('reviewer-select-box').classList.add('hidden');
-      document.getElementById('section-edu').classList.add('hidden'); document.getElementById('section-vp').classList.add('hidden'); document.getElementById('section-gm').classList.add('hidden');
+      document.getElementById('section-edu').classList.add('hidden'); document.getElementById('section-area').classList.add('hidden'); document.getElementById('section-vp').classList.add('hidden'); document.getElementById('section-gm').classList.add('hidden');
       document.getElementById('emp-id').value = ''; document.getElementById('id-tail').value = '';
       lockAllWorkflow(); renderMetrics();
     }
@@ -484,7 +694,7 @@
       const payload = Object.assign({ action: action }, data); showLoading(true);
       fetch(GAS_API_URL, { method: "POST", body: JSON.stringify(payload) })
       .then(res => res.json()).then(text => { showLoading(false); successCallback(text); })
-      .catch(err => { showLoading(false); alert("❌ 系統通訊失敗！原因：" + err.toString()); });
+      .catch(err => { showLoading(false); alert("❌ 通訊連線失敗！原因：" + err.toString()); });
     }
   </script>
 </body>
