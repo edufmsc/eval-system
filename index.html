@@ -118,7 +118,7 @@
               </div>
 
               <div id="canvas-wrapper" class="relative bg-white border border-gray-300 rounded-xl overflow-hidden h-40 w-full">
-                <canvas id="signature-canvas" class="w-full h-full touch-none"></canvas>
+                <canvas id="signature-canvas" width="800" height="300" class="w-full h-full touch-none block bg-white"></canvas>
                 <button type="button" onclick="clearSignatureCanvas()" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-lg transition shadow-sm">
                   <i class="fa-solid fa-eraser mr-1"></i>一鍵清除
                 </button>
@@ -233,11 +233,9 @@
 
     let canvas, ctx, isDrawing = false;
     let sigCanvasInit = false;
-    let lastCanvasWidth = 0; // 🌟 用來記錄上一次寬度，防止手機高度滾動時清空
 
     window.onload = function() {
       renderMetrics();
-      window.addEventListener('resize', () => resizeCanvas(false));
     };
 
     function renderMetrics() {
@@ -331,7 +329,7 @@
       selectExactScore(null, metricId, max, min, max);
     }
 
-    // 簽名板精確座標公式 (多端通用，防止歪斜)
+    // 🌟 核心比例換算公式：完美對齊 800x300 內部畫布，永不歪斜
     function getCanvasCoords(e) {
       const rect = canvas.getBoundingClientRect();
       let clientX, clientY;
@@ -351,19 +349,19 @@
     }
 
     function initSignatureCanvas() {
+      if (sigCanvasInit) return;
       canvas = document.getElementById('signature-canvas');
       ctx = canvas.getContext('2d');
       
-      resizeCanvas(true); // 首次強制重設
-      
+      // 🌟 強制固定畫布繪圖屬性，雙重防線
       ctx.strokeStyle = "#333333";
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 4;
       ctx.lineCap = "round";
       
-      if (sigCanvasInit) return; 
-      
+      // 滑鼠事件
       canvas.addEventListener('mousedown', (e) => {
         isDrawing = true;
+        ctx.strokeStyle = "#333333"; ctx.lineWidth = 4; ctx.lineCap = "round";
         const coords = getCanvasCoords(e);
         ctx.beginPath();
         ctx.moveTo(coords.x, coords.y);
@@ -376,8 +374,10 @@
       });
       window.addEventListener('mouseup', () => { isDrawing = false; });
       
+      // 手機觸控事件
       canvas.addEventListener('touchstart', (e) => {
         isDrawing = true;
+        ctx.strokeStyle = "#333333"; ctx.lineWidth = 4; ctx.lineCap = "round";
         const coords = getCanvasCoords(e);
         ctx.beginPath();
         ctx.moveTo(coords.x, coords.y);
@@ -393,35 +393,6 @@
       window.addEventListener('touchend', () => { isDrawing = false; });
       
       sigCanvasInit = true;
-    }
-
-    // 🌟 核心修復：防止手機滑動螢幕(高度微變)時清空簽名畫布，並在旋轉時自動貼回
-    function resizeCanvas(force = false) {
-      if (!canvas) return;
-      const rect = canvas.parentNode.getBoundingClientRect();
-      
-      // 只有當「寬度變化」大於 5px (如螢幕轉向) 或「強制重繪」時，才調整尺寸
-      if (force || Math.abs(rect.width - lastCanvasWidth) > 5) {
-        
-        // 建立臨時畫布備份當前筆跡
-        let tempCanvas = document.createElement('canvas');
-        tempCanvas.width = canvas.width;
-        tempCanvas.height = canvas.height;
-        let tempCtx = tempCanvas.getContext('2d');
-        tempCtx.drawImage(canvas, 0, 0);
-
-        // 調整畫布點陣寬高
-        canvas.width = rect.width;
-        canvas.height = rect.height;
-        
-        ctx.strokeStyle = "#333333";
-        ctx.lineWidth = 3;
-        ctx.lineCap = "round";
-
-        // 把備份的筆跡原封不動貼回來 (等比縮放貼回)
-        ctx.drawImage(tempCanvas, 0, 0, rect.width, rect.height);
-        lastCanvasWidth = rect.width;
-      }
     }
 
     function clearSignatureCanvas() {
@@ -451,7 +422,6 @@
     // API 連線工具
     function callAPI(action, data, successCallback) {
       const payload = Object.assign({ action: action }, data);
-      
       showLoading(true); 
       
       fetch(GAS_API_URL, {
@@ -504,6 +474,8 @@
           currentUser = result;
           document.getElementById('login-container').classList.add('hidden');
           document.getElementById('app-container').classList.remove('hidden');
+          // 🌟 登入成功時，強制保證考評盒子是收起來的
+          document.getElementById('evaluation-form-container').classList.add('hidden');
           document.getElementById('user-info').innerText = `${result.name} (${result.title})`;
           
           const savedSigBox = document.getElementById('saved-sig-box');
@@ -536,7 +508,7 @@
       });
     }
 
-    // 🌟 當選擇學員改變時，帶出基本資料卡片並自動顯示下方的考評表格
+    // 當選擇學員改變時，帶出基本資料並一秒自動顯示下方的考評表格
     function onUnderlingChange() {
       const select = document.getElementById('underling-select');
       const selectedId = select.value;
@@ -554,11 +526,8 @@
           infoCard.classList.remove('hidden');
           formContainer.classList.remove('hidden'); // 🌟 自動展開下方表單
           
-          // 表單顯示後，立即精準計算並初始化簽名畫布尺寸
-          setTimeout(() => {
-            initSignatureCanvas();
-            resizeCanvas(true);
-          }, 100);
+          // 初始化簽名板
+          initSignatureCanvas();
           return;
         }
       }
@@ -607,6 +576,7 @@
         sigBase64 = canvas.toDataURL();
       }
       
+      // 🌟 封裝即將傳送的資料包
       pendingPayload = {
         managerId: currentUser.empId,
         store: currentUser.store,
@@ -632,62 +602,3 @@
     function closeConfirmModal() {
       document.getElementById('custom-confirm-modal').classList.add('hidden');
       pendingPayload = null;
-    }
-
-    // 🌟 核心修復：使用備份指標，防止因 closeConfirmModal() 清空變數而導致 TypeError
-    function executeSubmit() {
-      if(!pendingPayload) return;
-      
-      const payloadToSend = pendingPayload; // 🌟 備份數據指標！
-      closeConfirmModal(); // 關閉彈窗並將 pendingPayload 置為 null
-      showLoading(true);
-      
-      callAPI("submit", { formData: payloadToSend }, function(res) {
-        showLoading(false);
-        if(res.success) {
-          alert(res.message);
-          // 送出成功，徹底洗乾淨重設畫面
-          document.getElementById('underling-select').value = '';
-          document.getElementById('manager-comment').value = '';
-          document.getElementById('info-card-container').classList.add('hidden');
-          document.getElementById('evaluation-form-container').classList.add('hidden'); // 🌟 隱藏考評區
-          selectedScores = {};
-          activeRanges = {};
-          clearSignatureCanvas();
-          renderMetrics();
-        } else {
-          alert("儲存失敗：" + res.message);
-        }
-      });
-    }
-
-    function logout() {
-      currentUser = null;
-      subordinateCache = [];
-      selectedScores = {};
-      activeRanges = {};
-      document.getElementById('app-container').classList.add('hidden');
-      document.getElementById('login-container').classList.remove('hidden');
-      document.getElementById('emp-id').value = '';
-      document.getElementById('id-tail').value = '';
-      document.getElementById('manager-comment').value = '';
-      document.getElementById('underling-select').value = '';
-      document.getElementById('info-card-container').classList.add('hidden');
-      document.getElementById('evaluation-form-container').classList.add('hidden');
-      clearSignatureCanvas();
-      renderMetrics();
-    }
-
-    function showLoading(show) {
-      const spinner = document.getElementById('loading-spinner');
-      if(show) {
-        spinner.classList.remove('hidden');
-        document.body.style.overflow = "hidden"; // 鎖死背景滾動
-      } else {
-        spinner.classList.add('hidden');
-        document.body.style.overflow = ""; // 恢復滾動
-      }
-    }
-  </script>
-</body>
-</html>
