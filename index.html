@@ -159,7 +159,6 @@
   </div>
 
   <script>
-    // ⚠️【請確認為正確的 /exec 網址】
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbysdFVEq81YuSme1wp72i_MePw2P2TkGPysYJ1gJEvC-58DTuzCkyZbwMddqjiBMTuJ/exec";
 
     const metrics = [
@@ -329,7 +328,7 @@
       selectExactScore(null, metricId, max, min, max);
     }
 
-    // 🌟 核心比例換算公式：完美對齊 800x300 內部畫布，永不歪斜
+    // 🌟 核心比例換算公式：不論 CSS 如何拉伸，點擊皆能 100% 精準投射至 800x300 的記憶體畫布上
     function getCanvasCoords(e) {
       const rect = canvas.getBoundingClientRect();
       let clientX, clientY;
@@ -353,7 +352,6 @@
       canvas = document.getElementById('signature-canvas');
       ctx = canvas.getContext('2d');
       
-      // 🌟 強制固定畫布繪圖屬性，雙重防線
       ctx.strokeStyle = "#333333";
       ctx.lineWidth = 4;
       ctx.lineCap = "round";
@@ -374,7 +372,7 @@
       });
       window.addEventListener('mouseup', () => { isDrawing = false; });
       
-      // 手機觸控事件
+      // 觸控事件
       canvas.addEventListener('touchstart', (e) => {
         isDrawing = true;
         ctx.strokeStyle = "#333333"; ctx.lineWidth = 4; ctx.lineCap = "round";
@@ -442,7 +440,7 @@
           if (text.includes("google.com") || text.includes("Sign in") || text.includes("login")) {
             throw new Error("【權限不足】Google 正在阻擋連線。請確認後台 GAS 部署設定是否為「任何人 (Anyone)」可以存取。");
           } else {
-            throw new Error("【格式錯誤】後台傳回了非 JSON 的無效資料。");
+            throw new Error("【格式錯誤】後端傳回了非 JSON 的無效資料。");
           }
         }
       })
@@ -474,21 +472,23 @@
           currentUser = result;
           document.getElementById('login-container').classList.add('hidden');
           document.getElementById('app-container').classList.remove('hidden');
-          // 🌟 登入成功時，強制保證考評盒子是收起來的
+          
+          // 🌟 登入成功時，強制保證「考評大盒子」與「基本資料」都是收合隱藏的
+          document.getElementById('info-card-container').classList.add('hidden');
           document.getElementById('evaluation-form-container').classList.add('hidden');
           document.getElementById('user-info').innerText = `${result.name} (${result.title})`;
           
           const savedSigBox = document.getElementById('saved-sig-box');
-          if (result.savedSignature && result.savedSignature.trim() !== "") {
+          const hasSavedSig = result.savedSignature && String(result.savedSignature).trim() !== "";
+          if (hasSavedSig) {
             savedSigBox.classList.remove('hidden');
             document.getElementById('use-saved-sig').checked = true;
-            toggleSignatureType();
           } else {
             savedSigBox.classList.add('hidden');
             document.getElementById('use-saved-sig').checked = false;
-            toggleSignatureType();
           }
           
+          // 🌟 關鍵修正：登入時千萬不要初始化隱藏的畫布！全部移到選人後才執行，完美避開 0 寬度崩潰 Bug
           loadUnderlings(result.store);
         } else {
           errorEl.innerText = result.message;
@@ -524,10 +524,12 @@
           document.getElementById('info-eval-date').innerText = getMinguoToday();
           
           infoCard.classList.remove('hidden');
-          formContainer.classList.remove('hidden'); // 🌟 自動展開下方表單
+          formContainer.classList.remove('hidden'); // 🌟 選人後，才將整張考核表解鎖浮現
           
-          // 初始化簽名板
-          initSignatureCanvas();
+          // 🌟 此時畫布容器已完全展現，寬度不為 0，安全初始化簽名板！
+          setTimeout(() => {
+            toggleSignatureType(); 
+          }, 50);
           return;
         }
       }
@@ -576,7 +578,6 @@
         sigBase64 = canvas.toDataURL();
       }
       
-      // 🌟 封裝即將傳送的資料包
       pendingPayload = {
         managerId: currentUser.empId,
         store: currentUser.store,
@@ -602,3 +603,63 @@
     function closeConfirmModal() {
       document.getElementById('custom-confirm-modal').classList.add('hidden');
       pendingPayload = null;
+    }
+
+    // 🌟 終極修正：保護變數指標，100% 解決 Cannot read properties of null 錯誤！
+    function executeSubmit() {
+      if(!pendingPayload) return;
+      
+      const payloadToSend = pendingPayload; // 先備份數據，防止清空
+      document.getElementById('custom-confirm-modal').classList.add('hidden'); 
+      
+      callAPI("submit", { formData: payloadToSend }, function(res) {
+        if(res.success) {
+          alert(res.message);
+          // 成功送出後，徹底重設畫面為初始防呆狀態
+          document.getElementById('underling-select').value = '';
+          document.getElementById('manager-comment').value = '';
+          document.getElementById('info-card-container').classList.add('hidden');
+          document.getElementById('evaluation-form-container').classList.add('hidden');
+          selectedScores = {};
+          activeRanges = {};
+          pendingPayload = null; 
+          clearSignatureCanvas();
+          renderMetrics();
+        } else {
+          alert("儲存失敗：" + res.message);
+          pendingPayload = null;
+        }
+      });
+    }
+
+    function logout() {
+      currentUser = null;
+      subordinateCache = [];
+      selectedScores = {};
+      activeRanges = {};
+      pendingPayload = null;
+      document.getElementById('app-container').classList.add('hidden');
+      document.getElementById('login-container').classList.remove('hidden');
+      document.getElementById('emp-id').value = '';
+      document.getElementById('id-tail').value = '';
+      document.getElementById('manager-comment').value = '';
+      document.getElementById('underling-select').value = '';
+      document.getElementById('info-card-container').classList.add('hidden');
+      document.getElementById('evaluation-form-container').classList.add('hidden');
+      clearSignatureCanvas();
+      renderMetrics();
+    }
+
+    function showLoading(show) {
+      const spinner = document.getElementById('loading-spinner');
+      if(show) {
+        spinner.classList.remove('hidden');
+        document.body.style.overflow = "hidden"; 
+      } else {
+        spinner.classList.add('hidden');
+        document.body.style.overflow = ""; 
+      }
+    }
+  </script>
+</body>
+</html>
