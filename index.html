@@ -94,29 +94,29 @@
 
         <hr class="border-dashed border-gray-300">
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
+        <div class="flex flex-col gap-6 w-full">
+          <div class="w-full">
             <label class="block text-sm font-black text-gray-700 mb-1.5">
               <i class="fa-solid fa-comment-dots brand-text mr-1"></i> 店經理評語：
             </label>
-            <textarea id="manager-comment" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-base h-48 md:h-[210px] resize-none" placeholder="請填寫對該學員本月的具體表現評價..."></textarea>
+            <textarea id="manager-comment" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-base h-32 resize-none" placeholder="請填寫對該學員本月的具體表現評價..."></textarea>
           </div>
 
-          <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-col justify-between">
-            <div class="flex justify-between items-center mb-1">
+          <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 w-full space-y-3">
+            <div class="flex justify-between items-center">
               <label class="block text-sm font-black text-gray-700">
                 <i class="fa-solid fa-signature brand-text mr-1"></i> 店經理簽章：
               </label>
             </div>
             
-            <div id="saved-sig-box" class="hidden mb-2">
+            <div id="saved-sig-box" class="hidden">
               <label class="inline-flex items-center cursor-pointer py-1">
                 <input type="checkbox" id="use-saved-sig" onchange="toggleSignatureType()" class="w-5 h-5 rounded text-orange-600 focus:ring-orange-500 border-gray-300">
                 <span class="ml-2 text-xs font-bold text-gray-700">使用系統預存簽名確認</span>
               </label>
             </div>
 
-            <div id="canvas-wrapper" class="relative bg-white border border-gray-300 rounded-xl overflow-hidden h-36 md:h-40 flex-1">
+            <div id="canvas-wrapper" class="relative bg-white border border-gray-300 rounded-xl overflow-hidden h-40 w-full">
               <canvas id="signature-canvas" class="w-full h-full touch-none"></canvas>
               <button type="button" onclick="clearSignatureCanvas()" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-lg transition shadow-sm">
                 <i class="fa-solid fa-eraser mr-1"></i>一鍵清除
@@ -148,7 +148,7 @@
     </div>
   </div>
 
-  <div id="loading-spinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div id="loading-spinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] pointer-events-auto hidden">
     <div class="bg-white p-5 rounded-2xl flex flex-col items-center">
       <div class="animate-spin rounded-full h-10 w-10 border-t-4 brand-border border-gray-200"></div>
       <p class="mt-3 font-bold text-gray-700 text-xs">處理中，請稍候...</p>
@@ -233,7 +233,6 @@
 
     window.onload = function() {
       renderMetrics();
-      // 🌟 監聽視窗縮放事件，自動調校簽名板大小，防止電腦/手機切換時尺寸跑位
       window.addEventListener('resize', resizeCanvas);
     };
 
@@ -328,44 +327,65 @@
       selectExactScore(null, metricId, max, min, max);
     }
 
-    // 🌟 修正：確保簽名板在任何裝置打開時都能精準計算實際寬度
+    // 🌟 數學公式計算手寫板精準座標（不論直放、橫放、縮放，100% 精準對齊）
+    function getCanvasCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      let clientX, clientY;
+      
+      if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+      }
+      
+      // 核心縮放補償公式
+      return {
+        x: (clientX - rect.left) * (canvas.width / rect.width),
+        y: (clientY - rect.top) * (canvas.height / rect.height)
+      };
+    }
+
     function initSignatureCanvas() {
       canvas = document.getElementById('signature-canvas');
       ctx = canvas.getContext('2d');
       
-      resizeCanvas(); // 強制執行一次寬度自適應
+      resizeCanvas(); 
       
       ctx.strokeStyle = "#333333";
       ctx.lineWidth = 3;
       ctx.lineCap = "round";
       
-      if (sigCanvasInit) return; // 避免重複綁定事件
+      if (sigCanvasInit) return; 
       
-      // 滑鼠事件
+      // 滑鼠畫圖
       canvas.addEventListener('mousedown', (e) => {
         isDrawing = true;
+        const coords = getCanvasCoords(e);
         ctx.beginPath();
-        ctx.moveTo(e.clientX - canvas.getBoundingClientRect().left, e.clientY - canvas.getBoundingClientRect().top);
+        ctx.moveTo(coords.x, coords.y);
       });
       canvas.addEventListener('mousemove', (e) => {
         if (!isDrawing) return;
-        ctx.lineTo(e.clientX - canvas.getBoundingClientRect().left, e.clientY - canvas.getBoundingClientRect().top);
+        const coords = getCanvasCoords(e);
+        ctx.lineTo(coords.x, coords.y);
         ctx.stroke();
       });
       window.addEventListener('mouseup', () => { isDrawing = false; });
       
-      // 手機觸控
+      // 手機觸控畫圖
       canvas.addEventListener('touchstart', (e) => {
         isDrawing = true;
-        const touch = e.touches[0];
+        const coords = getCanvasCoords(e);
         ctx.beginPath();
-        ctx.moveTo(touch.clientX - canvas.getBoundingClientRect().left, touch.clientY - canvas.getBoundingClientRect().top);
+        ctx.moveTo(coords.x, coords.y);
         e.preventDefault();
       });
       canvas.addEventListener('touchmove', (e) => {
         if (!isDrawing) return;
-        const touch = e.touches[0];
-        ctx.lineTo(touch.clientX - canvas.getBoundingClientRect().left, touch.clientY - canvas.getBoundingClientRect().top);
+        const coords = getCanvasCoords(e);
+        ctx.lineTo(coords.x, coords.y);
         ctx.stroke();
         e.preventDefault();
       }, { passive: false });
@@ -374,7 +394,7 @@
       sigCanvasInit = true;
     }
 
-    // 🌟 自適應視窗調整 Canvas 尺寸的功能 (防止簽名畫布失效)
+    // 當旋轉螢幕、拉動瀏覽器時，自動調整 Canvas 圖層解析度大小
     function resizeCanvas() {
       if (!canvas) return;
       const rect = canvas.parentNode.getBoundingClientRect();
@@ -409,11 +429,11 @@
       return canvas.toDataURL() === blank.toDataURL();
     }
 
-    // API 除錯偵測器
+    // API 連線工具 (遮罩自動鎖死背景)
     function callAPI(action, data, successCallback) {
       const payload = Object.assign({ action: action }, data);
       
-      showLoading(true);
+      showLoading(true); // 開啟阻擋遮罩
       
       fetch(GAS_API_URL, {
         method: "POST",
@@ -424,6 +444,7 @@
         return res.text();
       })
       .then(text => {
+        showLoading(false); // 關閉阻擋遮罩
         try {
           const resData = JSON.parse(text);
           successCallback(resData);
@@ -437,7 +458,7 @@
         }
       })
       .catch(err => {
-        showLoading(false);
+        showLoading(false); // 關閉阻擋遮罩
         console.error("API 連線失敗：", err);
         alert("❌ 系統連線失敗！\n\n【詳細原因】\n" + err.message);
       });
@@ -466,7 +487,6 @@
           document.getElementById('app-container').classList.remove('hidden');
           document.getElementById('user-info').innerText = `${result.name} (${result.title})`;
           
-          // 🌟 登入成功後，立刻初始化並渲染店長簽名欄位尺寸
           const savedSigBox = document.getElementById('saved-sig-box');
           if (result.savedSignature && result.savedSignature.trim() !== "") {
             savedSigBox.classList.remove('hidden');
@@ -478,7 +498,7 @@
             toggleSignatureType();
           }
           
-          // 雙重保證簽名板大小計算正確
+          // 登入成功後即刻校準畫布尺寸
           initSignatureCanvas();
           setTimeout(resizeCanvas, 100);
           
@@ -628,8 +648,13 @@
 
     function showLoading(show) {
       const spinner = document.getElementById('loading-spinner');
-      if(show) spinner.classList.remove('hidden');
-      else spinner.classList.add('hidden');
+      if(show) {
+        spinner.classList.remove('hidden');
+        document.body.style.overflow = "hidden"; // 鎖死背景滾動
+      } else {
+        spinner.classList.add('hidden');
+        document.body.style.overflow = ""; // 恢復滾動
+      }
     }
   </script>
 </body>
