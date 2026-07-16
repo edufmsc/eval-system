@@ -35,7 +35,7 @@ function handleLogin() {
     if(result.success) {
       currentUser = result; localStorage.setItem('hsz_eval_session', JSON.stringify(result));
       
-      // 登入成功時，確保觸發頭部 CSS 阻斷
+      // 登入成功時，極速激活頭部抗閃現 CSS
       document.documentElement.classList.add('hsz-logged-in');
       document.getElementById('login-container').classList.add('hidden');
       document.getElementById('app-container').classList.remove('hidden');
@@ -74,7 +74,7 @@ function setupGlobalSavedSignature() {
 function logout() {
   currentUser = null; localStorage.removeItem('hsz_eval_session');
   
-  // 🌟 核心防禦修復：登出時將防閃現極速鎖移除，防範登出後視窗變白畫面！
+  // 🌟 終極排雷防禦：登出時澈底拔除頭部的 CSS 阻斷鎖，完美排除登出時視窗全白死機的大 BUG！
   document.documentElement.classList.remove('hsz-logged-in'); 
   
   document.getElementById('app-container').classList.add('hidden'); document.getElementById('login-container').classList.remove('hidden');
