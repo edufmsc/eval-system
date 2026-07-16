@@ -47,7 +47,7 @@ function selectExactScore(event, metricId, score, min, max, force = false) {
 }
 function clickRangeCard(metricId, min, max) { selectExactScore(null, metricId, max, min, max); }
 
-// 🌟 完美實現規格一：整合 100 分天花板上限，大看板得分運算絕對不超過 100 分！
+// 🌟 完美實現需求一：整合 100 分天花板上限，大看板得分運算絕對不超過 100 分！
 function updateTotalScore() {
   let mgrTotal = 0; for (let i = 1; i <= 6; i++) { if (selectedScores[i]) mgrTotal += parseInt(selectedScores[i]); }
   let edu1 = parseFloat(document.getElementById('edu-score1')?.value) || 0;
@@ -71,7 +71,7 @@ function updateTotalScore() {
 function resetFormFields() {
   selectedScores = {}; activeRanges = {}; window.currentFormRowIndex = 0; window.loadedAdjustValue = 0;
   document.getElementById('manager-comment').value = ''; document.getElementById('manager-comment').disabled = false;
-  document.getElementById('manager-comment').className = "w-full p-4 border border-gray-300 rounded-xl text-base h-32 resize-none";
+  document.getElementById('manager-comment').className = "w-full p-4 border border-gray-300 rounded-xl text-base h-32 shortcut-none resize-none";
   
   ['edu-score1', 'edu-score2', 'edu-score3', 'edu-score4', 'edu-accum', 'edu-ojt', 'edu-comment', 'area-adjust-score', 'area-comment', 'vp-comment'].forEach(id => {
     const el = document.getElementById(id); if(el) { el.value = ''; el.disabled = false; el.classList.remove('bg-gray-100', 'text-gray-500'); }
@@ -99,7 +99,7 @@ function resetFormFields() {
   updateTotalScore();
 }
 
-// 🌟 完美實現管理大上帝視角：同時為教育中心與「區主管」全面加開全公司進行中單據大追蹤（區主管只看所屬轄區，自動依處別排序）
+// 🌟 完美實現管理大上帝視角與區主管專屬轄區監控水晶球功能
 function reloadPendingList() {
   lockAllWorkflow(); document.getElementById('pending-form-select').value = '';
   callAPI("getPendingForms", { role: currentUser.role, dept: currentUser.dept, area: currentUser.area, empId: currentUser.empId }, function(list) {
@@ -109,7 +109,7 @@ function reloadPendingList() {
     if (list.length === 1 && currentUser.role !== "教育中心" && currentUser.role !== "區主管") { select.value = "0"; onPendingFormChange(); }
     updateSubmitButtonText();
     
-    // 特許為最高管理加開大追蹤大控制外框面板
+    // 特許加開水晶球大面板
     if ((currentUser.role === "教育中心" || currentUser.role === "區主管") && !document.getElementById('admin-progress-box')) {
       let reviewerBox = document.getElementById('reviewer-select-box');
       if (reviewerBox) {
@@ -128,7 +128,7 @@ function reloadPendingList() {
       }
     }
     
-    // 主動向後台呼叫，除非結案否則永遠出現，自動依據處別排得整整齊齊
+    // 跨表撈取進行中名單並進行互斥大清洗
     if (currentUser.role === "教育中心" || currentUser.role === "區主管") {
       callAPI("getAllInProgressForms", { role: currentUser.role, area: currentUser.area }, function(inProgressList) {
         window.adminProgressCache = inProgressList;
@@ -147,7 +147,7 @@ function reloadPendingList() {
   });
 }
 
-// 🌟 終極修正點：三大下拉選單「真空互斥清洗防線」，全面阻止 rowIndex 權限衝突
+// 🌟 終極修正點：三大下拉選單「真空互斥清洗防線」，全面阻止管理者流轉行數衝突錯軌！
 function onPendingFormChange() { 
   const select = document.getElementById('pending-form-select'); if (select.value === "") return lockAllWorkflow();
   const hSel = document.getElementById('history-form-select'); if(hSel) hSel.value = "";
@@ -181,20 +181,14 @@ function loadHistoryList() {
   });
 }
 
-// 🌟 完美呈現：完簽「結案」的考核表自動移出店長下拉選單（不占用評核起單位置）
 function loadUnderlings(store) {
   callAPI("getUnderlings", { store: store }, function(list) {
     subordinateCache = list; const select = document.getElementById('underling-select'); select.innerHTML = '<option value="">-- 請選擇店內學員 --</option>';
-    list.forEach(u => { 
-      if (u.currentStatus === "結案") return; 
-      let tag = u.alreadyEval ? ` [本月已起單 - ${u.currentStatus}]` : ''; 
-      select.innerHTML += `<option value="${u.empId}">${u.name} (${u.empId})${tag}</option>`; 
-    });
+    list.forEach(u => { if (u.currentStatus === "結案") return; let tag = u.alreadyEval ? ` [本月已起單 - ${u.currentStatus}]` : ''; select.innerHTML += `<option value="${u.empId}">${u.name} (${u.empId})${tag}</option>`; });
     updateSubmitButtonText();
   });
 }
 
-// 🌟 修正點二：將原本打錯的 max = range.max 語法死碼修正為安全傳值，解開學員端載入癱瘓的重大 BUG
 function highlightMetricScores(scoresArray) { 
   for(let i = 1; i <= 6; i++) { 
     let score = parseInt(scoresArray[i-1]); 
@@ -239,7 +233,6 @@ function onUnderlingChange() {
     }
     updateTotalScore();
   } else {
-    // 🌟 修正點三：清除失效的殘缺死碼 .add; 確保標準隱顯防護真空隔離
     isReadOnlyMode = false; document.getElementById('readonly-banner').classList.add('hidden');
     document.getElementById('btn-submit-main').classList.remove('hidden');
     window.loadedAdjustValue = 0; updateTotalScore();
@@ -337,7 +330,6 @@ function updateSubmitButtonText() {
   if(textMap[currentUser.role]) btn.innerText = textMap[currentUser.role];
 }
 
-// 其餘 executeForceReset、rejectForm、submitForm、callAPI 核心不變，完全安全鎖死保留...
 function executeForceReset() {
   let f = null; const pendingIdx = document.getElementById('pending-form-select').value; const historyIdx = document.getElementById('history-form-select').value; const adminIdx = document.getElementById('admin-progress-form-select')?.value;
   if (pendingIdx !== "" && pendingIdx !== undefined) f = pendingFormCache[pendingIdx];
