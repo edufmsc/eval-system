@@ -2493,17 +2493,32 @@ function configurePdfActionBox(form) {
     "pdf-action-box"
   );
 
+  const openButton = document.getElementById(
+    "btn-open-current-pdf"
+  );
+
+  const regenerateButton = document.getElementById(
+    "btn-regenerate-current-pdf"
+  );
+
+  // 每次切換單據或角色時都先全面關閉，避免上一位登入者的PDF區塊殘留。
+  if (box) box.classList.add("hidden");
+  if (openButton) openButton.classList.add("hidden");
+  if (regenerateButton) regenerateButton.classList.add("hidden");
+  window.currentSelectedPdfForm = null;
+
   if (!box || !form || !currentUser) {
     return;
   }
 
-  const allowedRoles = [
+  // PDF檢視權限：教育中心與總經理。
+  // 門市店主管、區主管、學員、營業副總皆不顯示PDF區塊。
+  const canOpenPdf = [
     "教育中心",
     "總經理"
-  ];
+  ].includes(currentUser.role);
 
-  if (!allowedRoles.includes(currentUser.role)) {
-    box.classList.add("hidden");
+  if (!canOpenPdf) {
     return;
   }
 
@@ -2512,14 +2527,14 @@ function configurePdfActionBox(form) {
     form.currentStatus === UI_STATUS.PDF_PENDING;
 
   if (!isClosed) {
-    box.classList.add("hidden");
     return;
   }
 
-  box.classList.remove("hidden");
+  const pdfUrl = String(form.pdfUrl || "").trim();
+  const canRegeneratePdf =
+    currentUser.role === "教育中心";
 
-  const pdfUrl =
-    String(form.pdfUrl || "").trim();
+  box.classList.remove("hidden");
 
   setText(
     "pdf-action-status",
@@ -2527,31 +2542,23 @@ function configurePdfActionBox(form) {
       ? "總經理已完成簽核，但PDF尚未成功產生。"
       : (
           pdfUrl
-            ? "PDF已成功產生，可開啟查看或重新產生。"
+            ? (
+                canRegeneratePdf
+                  ? "PDF已成功產生，可開啟查看或重新產生。"
+                  : "PDF已成功產生，可開啟查看。"
+              )
             : "案件已結案，但目前未讀取到PDF網址。"
         )
   );
 
-  const openButton =
-    document.getElementById(
-      "btn-open-current-pdf"
-    );
-
-  const regenerateButton =
-    document.getElementById(
-      "btn-regenerate-current-pdf"
-    );
-
   if (openButton) {
-    openButton.classList.toggle(
-      "hidden",
-      !pdfUrl
-    );
+    openButton.classList.toggle("hidden", !pdfUrl);
   }
 
   if (regenerateButton) {
-    regenerateButton.classList.remove(
-      "hidden"
+    regenerateButton.classList.toggle(
+      "hidden",
+      !canRegeneratePdf
     );
   }
 
@@ -2559,13 +2566,21 @@ function configurePdfActionBox(form) {
 }
 
 function openCurrentPdf() {
-  const form =
-    window.currentSelectedPdfForm;
+  if (
+    !currentUser ||
+    !["教育中心", "總經理"].includes(
+      currentUser.role
+    )
+  ) {
+    alert("目前角色沒有PDF檢視權限。");
+    hideElement("pdf-action-box");
+    return;
+  }
 
-  const pdfUrl =
-    form
-      ? String(form.pdfUrl || "").trim()
-      : "";
+  const form = window.currentSelectedPdfForm;
+  const pdfUrl = form
+    ? String(form.pdfUrl || "").trim()
+    : "";
 
   if (!pdfUrl) {
     alert("目前沒有可開啟的PDF網址。");
@@ -2588,11 +2603,10 @@ function manualRegeneratePDF() {
 
   if (
     !currentUser ||
-    !["教育中心", "總經理"].includes(
-      currentUser.role
-    )
+    currentUser.role !== "教育中心"
   ) {
-    alert("只有教育中心或總經理可以重新產生PDF。");
+    alert("只有教育中心可以重新產生PDF。");
+    hideElement("pdf-action-box");
     return;
   }
 
@@ -2603,7 +2617,8 @@ function manualRegeneratePDF() {
   callAPI(
     "regeneratePDF",
     {
-      rowIndex: window.currentFormRowIndex
+      rowIndex: window.currentFormRowIndex,
+      empId: currentUser.empId
     },
     (result) => {
       if (!result || !result.success) {
@@ -2736,8 +2751,11 @@ function lockAllWorkflow() {
     "info-card-container",
     "score-summary-card",
     "workflow-box",
-    "readonly-banner"
+    "readonly-banner",
+    "pdf-action-box"
   ].forEach(hideElement);
+
+  window.currentSelectedPdfForm = null;
 }
 
 function showLoading(show) {
