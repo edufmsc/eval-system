@@ -96,6 +96,11 @@ const metrics = [
 window.areaAdjustMode = "none";
 window.areaAdjustMagnitude = 0;
 window.currentSelectedManagerCase = null;
+window.trackingFormCache = [];
+window.currentSelectedTrackingForm = null;
+window.currentActionMode = "reject";
+window.managerScoresLocked = true;
+window.adminManagementMode = false;
 
 
 /* ---------------------------------------------------------------
@@ -109,12 +114,13 @@ function ensureDynamicUiEnhancements() {
   ensureStudentConfirmationCheckbox();
   ensureGmCommentField();
   ensureForceResetOptions();
+  ensureTrackingBox();
 
   const storeLabel = document.querySelector("#store-select-box label");
   if (storeLabel) {
     storeLabel.innerHTML =
       '<i class="fa-solid fa-user-check brand-text mr-1"></i> ' +
-      "請選擇店內待處理／追蹤的受評人員考核表：";
+      "待我處理：請選擇受評人員考核表：";
   }
 
   const managerHeading = document.querySelector("#section-manager h3");
@@ -299,6 +305,45 @@ function ensureGmCommentField() {
   section.insertBefore(wrapper, sigBlock);
 }
 
+function ensureTrackingBox() {
+  if (document.getElementById("tracking-select-box")) {
+    return;
+  }
+
+  const anchor =
+    document.getElementById("reviewer-select-box") ||
+    document.getElementById("store-select-box");
+
+  if (!anchor || !anchor.parentNode) {
+    return;
+  }
+
+  const box = document.createElement("div");
+  box.id = "tracking-select-box";
+  box.className =
+    "bg-orange-50 p-4 rounded-xl border border-orange-200 space-y-2";
+
+  box.innerHTML = `
+    <label class="block text-base font-black text-orange-700">
+      <i class="fa-solid fa-route mr-1"></i>
+      已送出／流程追蹤
+    </label>
+    <select
+      id="tracking-form-select"
+      onchange="onTrackingFormChange()"
+      class="w-full p-2.5 border border-orange-300 rounded-xl font-bold text-sm bg-white cursor-pointer"
+    >
+      <option value="">-- 目前尚無流程追蹤資料 --</option>
+    </select>
+  `;
+
+  anchor.parentNode.insertBefore(
+    box,
+    anchor.nextSibling
+  );
+}
+
+
 function ensureForceResetOptions() {
   const select = document.getElementById("force-reset-select");
   if (!select || select.dataset.upgraded === "1") return;
@@ -392,7 +437,18 @@ function selectExactScore(
   force = false
 ) {
   if (event) event.stopPropagation();
-  if (isReadOnlyMode && !force) return;
+
+  // 六項門市店主管評分只有門市店主管編輯階段可操作。
+  // 教育中心、區主管及其他階層即使正在填自己的區塊，也維持唯讀。
+  if (
+    !force &&
+    (
+      isReadOnlyMode ||
+      window.managerScoresLocked
+    )
+  ) {
+    return;
+  }
 
   const previousScore = selectedScores[metricId];
 
@@ -655,6 +711,9 @@ function resetFormFields() {
   isReadOnlyMode = false;
   window.currentFormRowIndex = 0;
   window.currentSelectedManagerCase = null;
+  window.currentSelectedTrackingForm = null;
+  window.currentActionMode = "reject";
+  window.managerScoresLocked = true;
   window.loadedAdjustValue = 0;
   window.areaAdjustMode = "none";
   window.areaAdjustMagnitude = 0;
@@ -828,7 +887,12 @@ function getSignatureConfig(role) {
 
 function loadUnderlings(store) {
   callAPI("getUnderlings", { store }, (list) => {
-    subordinateCache = Array.isArray(list) ? list : [];
+    const allCases = Array.isArray(list) ? list : [];
+
+    // 門市店主管的待辦與追蹤正式分開。
+    subordinateCache = allCases.filter(
+      (item) => item.canEdit
+    );
 
     const select = document.getElementById(
       "underling-select"
@@ -837,23 +901,21 @@ function loadUnderlings(store) {
     if (!select) return;
 
     select.innerHTML = `
-      <option value="">-- 請選擇待處理或追蹤的考核表，共 ${subordinateCache.length} 筆 --</option>
+      <option value="">-- 待我處理：目前共有 ${subordinateCache.length} 筆 --</option>
     `;
 
     subordinateCache.forEach((item) => {
-      const editTag = item.canEdit
-        ? "待我處理"
-        : "流程追蹤";
-
       select.insertAdjacentHTML(
         "beforeend",
         `<option value="${item.rowIndex}">
-          【${item.month}｜${item.evaluationNo}】${item.storeDisplay}－${item.name}［${editTag}：${item.currentStatus}］
+          【${item.month}｜${item.evaluationNo}】${item.storeDisplay}－${item.name}［${item.currentStatus}］
         </option>`
       );
     });
 
     updateSubmitButtonText();
+    loadTrackingList();
+    loadHistoryList();
   });
 }
 
@@ -899,6 +961,7 @@ function onUnderlingChange() {
 
   if (form.canEdit) {
     isReadOnlyMode = false;
+    window.managerScoresLocked = false;
 
     const managerComment = document.getElementById(
       "manager-comment"
@@ -928,6 +991,7 @@ function onUnderlingChange() {
     hideElement("btn-reject-main");
   } else {
     isReadOnlyMode = true;
+    window.managerScoresLocked = true;
 
     const managerComment = document.getElementById(
       "manager-comment"
@@ -1015,10 +1079,113 @@ function reloadPendingList() {
       }
 
       updateSubmitButtonText();
+      loadTrackingList();
+      loadHistoryList();
       loadProgressMonitor();
     }
   );
 }
+
+function loadTrackingList() {
+  ensureTrackingBox();
+
+  if (!currentUser) {
+    return;
+  }
+
+  callAPI(
+    "getTrackingForms",
+    {
+      role: currentUser.role,
+      dept: currentUser.dept,
+      area: currentUser.area,
+      empId: currentUser.empId,
+      store: currentUser.store
+    },
+    (list) => {
+      window.trackingFormCache =
+        Array.isArray(list) ? list : [];
+
+      const select = document.getElementById(
+        "tracking-form-select"
+      );
+
+      if (!select) return;
+
+      if (window.trackingFormCache.length === 0) {
+        select.innerHTML = `
+          <option value="">-- 目前尚無已送出／流程追蹤資料 --</option>
+        `;
+        return;
+      }
+
+      select.innerHTML = `
+        <option value="">-- 已送出／流程追蹤：目前共有 ${window.trackingFormCache.length} 筆 --</option>
+      `;
+
+      window.trackingFormCache.forEach(
+        (form, index) => {
+          const recallTag = form.canRecall
+            ? "｜可收回"
+            : "";
+
+          select.insertAdjacentHTML(
+            "beforeend",
+            `<option value="${index}">【${form.month}｜${form.docId}】${form.storeDisplay || form.store}－${form.underlingName}［${form.currentStatus}${recallTag}］</option>`
+          );
+        }
+      );
+    }
+  );
+}
+
+function onTrackingFormChange() {
+  const select = document.getElementById(
+    "tracking-form-select"
+  );
+
+  if (!select || select.value === "") {
+    lockAllWorkflow();
+    return;
+  }
+
+  clearOtherSelects("tracking");
+
+  const form =
+    window.trackingFormCache[
+      Number(select.value)
+    ];
+
+  window.currentSelectedTrackingForm = form;
+  window.currentFormRowIndex = form.rowIndex;
+
+  renderSingleFormToView(form, true);
+
+  if (form.canRecall) {
+    window.currentActionMode = "recall";
+
+    const button = document.getElementById(
+      "btn-reject-main"
+    );
+
+    if (button) {
+      button.className =
+        "bg-amber-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg text-lg hover:bg-amber-600 transition sm:w-1/3";
+
+      button.innerHTML =
+        '<i class="fa-solid fa-rotate-left mr-2"></i>收回修改';
+
+      showElement("btn-reject-main");
+    }
+
+    showReadOnlyBanner(
+      `此表單已送出，目前流程為「${form.currentStatus}」。下一關尚未完成，可由原送出人收回修改。`
+    );
+  } else {
+    window.currentActionMode = "reject";
+  }
+}
+
 
 function loadProgressMonitor() {
   const roles = ["教育中心", "區主管", "營業副總"];
@@ -1039,10 +1206,20 @@ function loadProgressMonitor() {
         "bg-blue-50 p-4 rounded-xl border border-blue-200 mt-2 space-y-2";
 
       box.innerHTML = `
-        <label class="block text-base font-black text-blue-700">
-          <i class="fa-solid fa-eye mr-1"></i>
-          進行中流程監控（唯讀）
-        </label>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <label class="block text-base font-black text-blue-700">
+            <i class="fa-solid fa-eye mr-1"></i>
+            進行中流程監控（預設唯讀）
+          </label>
+          <div id="admin-mode-buttons" class="${currentUser.role === "教育中心" ? "" : "hidden"} flex gap-2">
+            <button type="button" id="btn-enter-admin-mode" onclick="toggleAdminManagementMode(true)" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold">
+              進入管理模式
+            </button>
+            <button type="button" id="btn-exit-admin-mode" onclick="toggleAdminManagementMode(false)" class="hidden px-3 py-1.5 rounded-lg bg-gray-600 text-white text-xs font-bold">
+              離開管理模式
+            </button>
+          </div>
+        </div>
         <select
           id="admin-progress-form-select"
           onchange="onAdminProgressFormChange()"
@@ -1088,6 +1265,80 @@ function loadProgressMonitor() {
     }
   );
 }
+
+function toggleAdminManagementMode(enable) {
+  if (
+    !currentUser ||
+    currentUser.role !== "教育中心"
+  ) {
+    return;
+  }
+
+  if (enable) {
+    const confirmed = confirm(
+      "管理模式可以強制調整正式考核流程。確定要進入嗎？"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+  }
+
+  window.adminManagementMode = Boolean(enable);
+
+  const enterButton = document.getElementById(
+    "btn-enter-admin-mode"
+  );
+
+  const exitButton = document.getElementById(
+    "btn-exit-admin-mode"
+  );
+
+  if (enterButton) {
+    enterButton.classList.toggle(
+      "hidden",
+      window.adminManagementMode
+    );
+  }
+
+  if (exitButton) {
+    exitButton.classList.toggle(
+      "hidden",
+      !window.adminManagementMode
+    );
+  }
+
+  const adminBox = document.getElementById(
+    "admin-console-box"
+  );
+
+  if (adminBox) {
+    adminBox.classList.toggle(
+      "hidden",
+      !window.adminManagementMode
+    );
+  }
+
+  const forceContainer = document.getElementById(
+    "force-reset-container"
+  );
+
+  if (forceContainer) {
+    forceContainer.classList.toggle(
+      "hidden",
+      !window.adminManagementMode
+    );
+  }
+
+  if (!window.adminManagementMode) {
+    const select = document.getElementById(
+      "force-reset-select"
+    );
+
+    if (select) select.value = "";
+  }
+}
+
 
 function onPendingFormChange() {
   const select = document.getElementById(
@@ -1147,12 +1398,15 @@ function loadHistoryList() {
 
       if (!box || !select) return;
 
+      // 三區固定顯示；沒有歷史資料時也不隱藏整個欄位。
+      box.classList.remove("hidden");
+
       if (historyFormCache.length === 0) {
-        box.classList.add("hidden");
+        select.innerHTML = `
+          <option value="">-- 目前尚無已結案歷史資料 --</option>
+        `;
         return;
       }
-
-      box.classList.remove("hidden");
 
       select.innerHTML = `
         <option value="">-- 已結案歷史資料：共有 ${historyFormCache.length} 筆 --</option>
@@ -1240,6 +1494,7 @@ function renderSingleFormToView(form, forceReadOnly) {
   }
 
   isReadOnlyMode = true;
+  window.managerScoresLocked = true;
   renderCompletedLaterSections(form);
 
   const editable =
@@ -1329,6 +1584,11 @@ function renderCompletedLaterSections(form) {
 
 function prepareCurrentRoleEdit(form) {
   isReadOnlyMode = false;
+
+  // 只開放目前角色自己的區塊；
+  // 門市店主管六項分數仍維持唯讀。
+  window.managerScoresLocked = true;
+
   hideElement("readonly-banner");
   showElement("btn-submit-main");
   updateSubmitButtonText();
@@ -1640,6 +1900,8 @@ function updateSubmitButtonText() {
 }
 
 function configureRejectButton(role) {
+  window.currentActionMode = "reject";
+
   const button = document.getElementById(
     "btn-reject-main"
   );
@@ -1668,6 +1930,32 @@ function configureRejectButton(role) {
 
 function rejectForm() {
   if (!currentUser || !window.currentFormRowIndex) {
+    return;
+  }
+
+  if (window.currentActionMode === "recall") {
+    if (
+      !confirm(
+        "確定要在下一關尚未完成前，收回此考核表修改嗎？"
+      )
+    ) {
+      return;
+    }
+
+    callAPI(
+      "submitStage",
+      {
+        role: currentUser.role,
+        formData: {
+          rowIndex: window.currentFormRowIndex,
+          managerId: currentUser.empId,
+          empId: currentUser.empId,
+          isRecall: true
+        }
+      },
+      handleFlowResult
+    );
+
     return;
   }
 
@@ -2062,6 +2350,10 @@ function getCurrentSelectedFormForAdmin() {
     "history-form-select"
   );
 
+  const tracking = document.getElementById(
+    "tracking-form-select"
+  );
+
   if (pending && pending.value !== "") {
     return pendingFormCache[Number(pending.value)];
   }
@@ -2069,6 +2361,12 @@ function getCurrentSelectedFormForAdmin() {
   if (progress && progress.value !== "") {
     return window.adminProgressCache[
       Number(progress.value)
+    ];
+  }
+
+  if (tracking && tracking.value !== "") {
+    return window.trackingFormCache[
+      Number(tracking.value)
     ];
   }
 
@@ -2119,15 +2417,26 @@ function showReadOnlyBanner(message) {
 function clearOtherSelects(activeType) {
   const mapping = {
     pending: [
+      "tracking-form-select",
+      "history-form-select",
+      "admin-progress-form-select"
+    ],
+    tracking: [
+      "pending-form-select",
+      "underling-select",
       "history-form-select",
       "admin-progress-form-select"
     ],
     progress: [
       "pending-form-select",
+      "underling-select",
+      "tracking-form-select",
       "history-form-select"
     ],
     history: [
       "pending-form-select",
+      "underling-select",
+      "tracking-form-select",
       "admin-progress-form-select"
     ]
   };
