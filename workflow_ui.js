@@ -102,6 +102,7 @@ window.currentActionMode = "reject";
 window.managerScoresLocked = true;
 window.adminManagementMode = false;
 window.managementAssigneeCache = [];
+window.currentReopenSourceForm = null;
 
 
 /* ---------------------------------------------------------------
@@ -156,7 +157,10 @@ function ensureBasicInfoCard() {
       <div><span class="font-bold text-gray-500">考核月份：</span><span id="info-month" class="font-black text-gray-800">-</span></div>
       <div><span class="font-bold text-orange-600">評核日期：</span><span id="info-eval-date" class="font-black text-orange-600">-</span></div>
       <div><span class="font-bold text-gray-500">考核單號：</span><span id="info-doc" class="font-black text-gray-800">-</span></div>
-      <div class="sm:col-span-1 lg:col-span-2"><span class="font-bold text-gray-500">目前流程：</span><span id="info-status" class="font-black text-orange-600">-</span></div>
+      <div><span class="font-bold text-gray-500">流程版本：</span><span id="info-version" class="font-black text-violet-700">R0</span></div>
+      <div><span class="font-bold text-gray-500">原始單號：</span><span id="info-original-doc" class="font-black text-gray-800">-</span></div>
+      <div class="sm:col-span-1 lg:col-span-3"><span class="font-bold text-gray-500">目前流程：</span><span id="info-status" class="font-black text-orange-600">-</span></div>
+      <div id="info-reopen-row" class="hidden sm:col-span-2 lg:col-span-3 bg-violet-50 border border-violet-200 rounded-lg p-3"><span class="font-bold text-violet-700">重新開啟原因：</span><span id="info-reopen-reason" class="font-bold text-violet-900">-</span></div>
     </div>
   `;
 }
@@ -1265,6 +1269,15 @@ function onTrackingFormChange() {
 
   renderSingleFormToView(form, true);
 
+  if (
+    window.adminManagementMode &&
+    currentUser.role === "教育中心"
+  ) {
+    updateManagementAssignmentSummary(form);
+    resetManagementControls(false);
+    syncAdminManagementPanels(form);
+  }
+
   if (form.canRecall) {
     window.currentActionMode = "recall";
 
@@ -1436,11 +1449,7 @@ function toggleAdminManagementMode(enable) {
     "admin-console-box"
   );
 
-  const forceContainer = document.getElementById(
-    "force-reset-container"
-  );
-
-  [controlBox, adminBox, forceContainer].forEach((element) => {
+  [controlBox, adminBox].forEach((element) => {
     if (element) {
       element.classList.toggle(
         "hidden",
@@ -1455,8 +1464,11 @@ function toggleAdminManagementMode(enable) {
     if (form) {
       updateManagementAssignmentSummary(form);
     }
+
+    syncAdminManagementPanels(form);
   } else {
     resetManagementControls();
+    syncAdminManagementPanels(null);
   }
 }
 
@@ -1482,6 +1494,7 @@ function onPendingFormChange() {
   ) {
     updateManagementAssignmentSummary(form);
     resetManagementControls(false);
+    syncAdminManagementPanels(form);
   }
 }
 
@@ -1507,6 +1520,7 @@ function onAdminProgressFormChange() {
   ) {
     updateManagementAssignmentSummary(form);
     resetManagementControls(false);
+    syncAdminManagementPanels(form);
   }
 }
 
@@ -1556,7 +1570,7 @@ function loadHistoryList() {
 
         select.insertAdjacentHTML(
           "beforeend",
-          `<option value="${index}">【${form.month}｜${form.docId}】${form.storeDisplay || form.store}－${form.underlingName}［${statusTag}］</option>`
+          `<option value="${index}">【${form.month}｜${form.docId}${form.flowVersion ? "｜" + form.flowVersion : ""}】${form.storeDisplay || form.store}－${form.underlingName}［${statusTag}］</option>`
         );
       });
     }
@@ -1587,6 +1601,7 @@ function onHistoryFormChange() {
   ) {
     updateManagementAssignmentSummary(form);
     resetManagementControls(false);
+    syncAdminManagementPanels(form);
   }
 
   showReadOnlyBanner(
@@ -1844,6 +1859,29 @@ function fillBasicInfo(form) {
     "info-status",
     form.currentStatus || "-"
   );
+
+  setText(
+    "info-version",
+    form.flowVersion || "R0"
+  );
+
+  setText(
+    "info-original-doc",
+    form.originalEvaluationNo ||
+      form.docId ||
+      form.evaluationNo ||
+      "-"
+  );
+
+  const reopenRow = document.getElementById(
+    "info-reopen-row"
+  );
+
+  if (reopenRow) {
+    const reason = String(form.reopenReason || "").trim();
+    reopenRow.classList.toggle("hidden", !reason);
+    setText("info-reopen-reason", reason || "-");
+  }
 }
 
 function convertManagerCaseToForm(managerCase) {
@@ -1853,6 +1891,13 @@ function convertManagerCaseToForm(managerCase) {
     rowIndex: managerCase.rowIndex,
     docId: managerCase.evaluationNo,
     evaluationNo: managerCase.evaluationNo,
+    originalEvaluationNo:
+      managerCase.originalEvaluationNo ||
+      managerCase.evaluationNo,
+    flowVersion: managerCase.flowVersion || "R0",
+    reopenReason: managerCase.reopenReason || "",
+    reopenOperatorId: managerCase.reopenOperatorId || "",
+    reopenTime: managerCase.reopenTime || "",
     month: managerCase.month,
     underlingId: managerCase.empId,
     underlingName: managerCase.name,
@@ -2458,6 +2503,22 @@ function resetManagementControls(clearSummary = true) {
 
   if (reasonInput) reasonInput.value = "";
   if (targetRoleText) targetRoleText.innerText = "尚未選擇";
+
+  const reopenReasonInput = document.getElementById(
+    "reopen-reason"
+  );
+  const reopenSummary = document.getElementById(
+    "reopen-source-summary"
+  );
+
+  if (reopenReasonInput) reopenReasonInput.value = "";
+  if (clearSummary && reopenSummary) {
+    reopenSummary.innerText =
+      "請從歷史考核表選擇一筆已結案案件。";
+  }
+
+  window.currentReopenSourceForm = null;
+
   if (clearSummary && summary) {
     summary.innerText = "請先從上方選擇一筆考核表。";
   }
@@ -2682,6 +2743,185 @@ function executeForceReset() {
       lockAllWorkflow();
       reloadPendingList();
       loadHistoryList();
+    }
+  );
+}
+
+
+/**
+ * 依目前選取案件切換教育中心管理面板。
+ * - 進行中案件：顯示指定角色／指定承辦人。
+ * - 已結案案件：顯示建立 R1／R2 副本。
+ */
+function syncAdminManagementPanels(form) {
+  const forceContainer = document.getElementById(
+    "force-reset-container"
+  );
+  const reopenContainer = document.getElementById(
+    "reopen-closed-container"
+  );
+  const reopenSummary = document.getElementById(
+    "reopen-source-summary"
+  );
+  const reopenButton = document.getElementById(
+    "btn-reopen-closed"
+  );
+  const warning = document.getElementById(
+    "reopen-closed-warning"
+  );
+
+  if (!window.adminManagementMode || !form) {
+    if (forceContainer) forceContainer.classList.add("hidden");
+    if (reopenContainer) reopenContainer.classList.add("hidden");
+    window.currentReopenSourceForm = null;
+    return;
+  }
+
+  const status = String(form.currentStatus || "").trim();
+  const isHistory = [
+    UI_STATUS.CLOSED,
+    UI_STATUS.PDF_PENDING
+  ].includes(status);
+
+  if (forceContainer) {
+    forceContainer.classList.toggle("hidden", isHistory);
+  }
+
+  if (reopenContainer) {
+    reopenContainer.classList.toggle("hidden", !isHistory);
+  }
+
+  if (!isHistory) {
+    window.currentReopenSourceForm = null;
+    return;
+  }
+
+  window.currentReopenSourceForm = form;
+
+  const version = form.flowVersion || "R0";
+  const originalNo =
+    form.originalEvaluationNo ||
+    form.docId ||
+    form.evaluationNo ||
+    "-";
+
+  if (reopenSummary) {
+    reopenSummary.innerText =
+      `來源單號：${form.docId || form.evaluationNo}；` +
+      `版本：${version}；原始單號：${originalNo}；` +
+      `受評人員：${form.underlingName}；` +
+      `目前狀態：${status}`;
+  }
+
+  const canReopen = status === UI_STATUS.CLOSED;
+
+  if (reopenButton) {
+    reopenButton.disabled = !canReopen;
+    reopenButton.classList.toggle("opacity-50", !canReopen);
+    reopenButton.classList.toggle("cursor-not-allowed", !canReopen);
+  }
+
+  if (warning) {
+    warning.innerText = canReopen
+      ? "新版本的分數、評語與簽名將全部從空白開始；原版本及原PDF不會被修改。"
+      : "此案件仍為『結案待PDF產生』，請先由教育中心成功產生PDF，才可建立下一版本。";
+  }
+}
+
+
+/**
+ * 教育中心建立結案案件的下一版本副本。
+ */
+function executeReopenClosedEvaluation() {
+  if (
+    !currentUser ||
+    currentUser.role !== "教育中心" ||
+    !window.adminManagementMode
+  ) {
+    alert("只有教育中心管理模式可以重新開啟結案案件。");
+    return;
+  }
+
+  const form = window.currentReopenSourceForm;
+
+  if (!form) {
+    alert("請先從歷史考核表選擇一筆已結案案件。");
+    return;
+  }
+
+  if (form.currentStatus !== UI_STATUS.CLOSED) {
+    alert("請先完成PDF產生，流程狀態為『結案』後再重新開啟。");
+    return;
+  }
+
+  const reason = getTrimmedValue("reopen-reason");
+
+  if (!reason) {
+    alert("重新開啟原因為必填。");
+    return;
+  }
+
+  const sourceVersion = form.flowVersion || "R0";
+  const originalNo =
+    form.originalEvaluationNo ||
+    form.docId ||
+    form.evaluationNo;
+
+  if (
+    !confirm(
+      `確定重新開啟此結案案件？\n\n` +
+      `來源單號：${form.docId || form.evaluationNo}\n` +
+      `來源版本：${sourceVersion}\n` +
+      `原始單號：${originalNo}\n\n` +
+      "系統將建立下一個 R 版本，並從門市店主管階段重新開始。\n" +
+      "原始結案資料及原PDF不會被修改。"
+    )
+  ) {
+    return;
+  }
+
+  const button = document.getElementById(
+    "btn-reopen-closed"
+  );
+
+  if (button) {
+    button.disabled = true;
+    button.classList.add("opacity-50");
+  }
+
+  callAPI(
+    "reopenClosedEvaluation",
+    {
+      rowIndex: form.rowIndex,
+      empId: currentUser.empId,
+      reopenReason: reason
+    },
+    (result) => {
+      if (button) {
+        button.disabled = false;
+        button.classList.remove("opacity-50");
+      }
+
+      alert(
+        result && result.message
+          ? result.message
+          : "重新開啟操作完成。"
+      );
+
+      if (!result || result.success !== true) {
+        return;
+      }
+
+      resetManagementControls();
+      lockAllWorkflow();
+
+      const historySelect = document.getElementById(
+        "history-form-select"
+      );
+
+      if (historySelect) historySelect.value = "";
+
+      reloadPendingList();
     }
   );
 }
