@@ -34,6 +34,9 @@ function handleLogin() {
     showLoading(false);
     if(result.success) {
       currentUser = result; localStorage.setItem('hsz_eval_session', JSON.stringify(result));
+      
+      // 登入成功時，確保觸發頭部 CSS 阻斷
+      document.documentElement.classList.add('hsz-logged-in');
       document.getElementById('login-container').classList.add('hidden');
       document.getElementById('app-container').classList.remove('hidden');
       document.getElementById('user-info').innerText = `${result.name} (${result.title})`;
@@ -68,12 +71,17 @@ function setupGlobalSavedSignature() {
   }
 }
 
-// 🌟 核心修正：登出時徹底清理門戶，包含最高管理看板與唯讀橫條一併抹除
 function logout() {
   currentUser = null; localStorage.removeItem('hsz_eval_session');
+  
+  // 🌟 核心修復：登出時將防閃現鎖一併洗去，讓下一次可以看得到登入頁
+  document.documentElement.classList.remove('hsz-logged-in'); 
+  
   document.getElementById('app-container').classList.add('hidden'); document.getElementById('login-container').classList.remove('hidden');
   document.getElementById('store-select-box').classList.add('hidden'); document.getElementById('reviewer-select-box').classList.add('hidden');
-  document.getElementById('admin-control-box').classList.add('hidden'); // 徹底隱藏管理者面板
+  document.getElementById('admin-control-box').classList.add('hidden'); 
+  if(document.getElementById('admin-progress-box')) document.getElementById('admin-progress-box').remove();
+  
   document.getElementById('section-edu').classList.add('hidden'); document.getElementById('section-area').classList.add('hidden'); document.getElementById('section-student-confirm').classList.add('hidden'); document.getElementById('section-vp').classList.add('hidden'); document.getElementById('section-gm').classList.add('hidden');
   document.getElementById('emp-id').value = ''; document.getElementById('id-tail').value = '';
   lockAllWorkflow(); renderMetrics();
