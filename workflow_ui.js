@@ -67,16 +67,17 @@ function updateTotalScore() {
   document.getElementById('sum-grand').innerText = grandSum;
 }
 
-// 🌟 萬能親筆高亮核章看板壓印渲染大腦
+// 🌟 智慧去背電子印章壓印大腦：前五關直接在畫面上貼上主管的去背簽名圖與日期
+// 完美達成 GM 端與高階主管看版的功能需求！
 function getSigHTML(title, sigUrl, date) {
   if (sigUrl && sigUrl.indexOf("http") !== -1) {
     return `<div class="p-4 bg-orange-50/40 border border-orange-200 rounded-xl space-y-2">
-      <div class="text-sm font-black text-gray-800 flex items-center"><i class="fa-solid fa-circle-check text-green-600 mr-1.5"></i> ${title} 已正式核章完畢 (核章日期：${date})</div>
+      <div class="text-sm font-black text-gray-800 flex items-center"><i class="fa-solid fa-circle-check text-green-600 mr-1.5"></i> ${title} 已正式核章 (簽核日期：${date})</div>
       <div class="bg-white border p-2 rounded-lg inline-block shadow-sm"><img src="${sigUrl}" class="h-14 object-contain block" alt="電子簽章"></div>
     </div>`;
   } else {
     return `<div class="p-4 bg-gray-100 rounded-xl text-sm font-black text-gray-700 flex items-center">
-      <i class="fa-solid fa-circle-check text-green-600 mr-1.5"></i> ${title} 已核章完成 (核章日期：${date})
+      <i class="fa-solid fa-circle-check text-green-600 mr-1.5"></i> ${title} 已核章完成 (簽核日期：${date})
     </div>`;
   }
 }
@@ -84,7 +85,7 @@ function getSigHTML(title, sigUrl, date) {
 function resetFormFields() {
   selectedScores = {}; activeRanges = {}; window.currentFormRowIndex = 0; window.loadedAdjustValue = 0;
   document.getElementById('manager-comment').value = ''; document.getElementById('manager-comment').disabled = false;
-  document.getElementById('manager-comment').className = "w-full p-4 border border-gray-300 rounded-xl text-base h-32 shortcut-none resize-none";
+  document.getElementById('manager-comment').className = "w-full p-4 border border-gray-300 rounded-xl text-base h-32 resize-none";
   
   ['edu-score1', 'edu-score2', 'edu-score3', 'edu-score4', 'edu-accum', 'edu-ojt', 'edu-comment', 'area-adjust-score', 'area-comment', 'vp-comment'].forEach(id => {
     const el = document.getElementById(id); if(el) { el.value = ''; el.disabled = false; el.classList.remove('bg-gray-100', 'text-gray-500'); }
@@ -112,7 +113,7 @@ function resetFormFields() {
   updateTotalScore();
 }
 
-// 🌟 完美加開：同時為教育中心、區主管以及「營業副總（處主管）」解鎖進行中單據大追蹤看板
+// 🌟 完美實現需求二：同時為教育中心、區主管以及「營業副總（處主管）」全面加開全公司/處別進行中單據大追蹤（自動依處別大排序）
 function reloadPendingList() {
   lockAllWorkflow(); document.getElementById('pending-form-select').value = '';
   callAPI("getPendingForms", { role: currentUser.role, dept: currentUser.dept, area: currentUser.area, empId: currentUser.empId }, function(list) {
@@ -122,7 +123,7 @@ function reloadPendingList() {
     if (list.length === 1 && currentUser.role !== "教育中心" && currentUser.role !== "區主管" && currentUser.role !== "營業副總") { select.value = "0"; onPendingFormChange(); }
     updateSubmitButtonText();
     
-    // 加開監控水晶球大選單外框
+    // 特許加開進行中水晶球追蹤面板
     if ((currentUser.role === "教育中心" || currentUser.role === "區主管" || currentUser.role === "營業副總") && !document.getElementById('admin-progress-box')) {
       let reviewerBox = document.getElementById('reviewer-select-box');
       if (reviewerBox) {
@@ -169,6 +170,7 @@ function onPendingFormChange() {
   renderSingleFormToView(pendingFormCache[select.value]); 
 }
 
+// 營業副總點選進行中監控單據時，同樣完美渲染展示！
 function onAdminProgressFormChange() {
   const select = document.getElementById('admin-progress-form-select'); if(select.value === "") return lockAllWorkflow();
   const pSel = document.getElementById('pending-form-select'); if(pSel) pSel.value = "";
@@ -205,9 +207,7 @@ function loadUnderlings(store) {
 
 function highlightMetricScores(scoresArray) { 
   for(let i = 1; i <= 6; i++) { 
-    let score = parseInt(scoresArray[i-1]); 
-    let metric = metrics.find(m => m.id === i); 
-    let range = metric.ranges.find(r => score >= r.min && score <= r.max); 
+    let score = parseInt(scoresArray[i-1]); let metric = metrics.find(m => m.id === i); let range = metric.ranges.find(r => score >= r.min && score <= r.max); 
     if (range) selectExactScore(null, i, score, range.min, range.max, true); 
   } 
 }
@@ -236,7 +236,7 @@ function onUnderlingChange() {
       highlightMetricScores(sub.historyData.scores); document.getElementById('manager-comment').value = sub.historyData.comment;
       document.getElementById('manager-comment').disabled = true; document.getElementById('manager-comment').classList.add('bg-gray-100');
       
-      // 🌟 完美實現總經理與各高階端唯讀看板：直接將店長的真實 PNG 電子印章圖檔與日期高亮壓印
+      // 壓印真實店長去背圖章
       document.getElementById('sig-block-manager').innerHTML = getSigHTML("【店長端】", sub.historyData.sig, sub.evalDate);
       
       if (sub.historyData.eduData && sub.historyData.eduData.score1 !== undefined && sub.historyData.eduData.score1 !== "") showEduSectionReadOnly(sub.historyData, sub.evalDate);
@@ -249,15 +249,13 @@ function onUnderlingChange() {
     }
     updateTotalScore();
   } else {
-    isReadOnlyMode = false; document.getElementById('readonly-banner').classList.add('hidden');
-    document.getElementById('btn-submit-main').classList.remove('hidden');
-    window.loadedAdjustValue = 0; updateTotalScore();
+    isReadOnlyMode = false; window.loadedAdjustValue = 0; updateTotalScore();
   }
 }
 
 function manualRegeneratePDF() {
   if (!window.currentFormRowIndex || parseInt(window.currentFormRowIndex) <= 0) { return alert("📢 請先從上方選定您想要重新生成 PDF 的單據公文物件！"); }
-  if (confirm("確定要手動『重新產生1:1歸檔PDF電子簽核報表』嗎？")) {
+  if (confirm("確定要手動『重新產生 1:1 歸檔 PDF 電子簽核報表』嗎？")) {
     showLoading(true);
     callAPI("regeneratePDF", { rowIndex: window.currentFormRowIndex }, function(res) {
       showLoading(false); if (res.success) { alert("🏆 " + res.message); } else { alert("❌ 重製失敗，原因：" + res.message); }
@@ -265,7 +263,7 @@ function manualRegeneratePDF() {
   }
 }
 
-// 🌟 核心升級：前五關全面唯讀看版壓印代碼 ── 上溯至店長、中心、區主管、副總、學員的真實親筆圖章與日期全數灌入！
+// 🌟 全面唯讀壓印：前五關直接在畫面上貼上主管的去背簽名圖與完簽日期
 function renderSingleFormToView(f) {
   isReadOnlyMode = false; window.currentFormRowIndex = f.rowIndex;
   document.getElementById('info-name').innerText = f.underlingName; document.getElementById('info-store').innerText = f.store;
@@ -276,7 +274,7 @@ function renderSingleFormToView(f) {
   document.getElementById('section-manager').classList.remove('hidden'); document.getElementById('manager-comment').value = f.managerComment;
   document.getElementById('manager-comment').disabled = true; document.getElementById('manager-comment').classList.add('bg-gray-100');
   
-  // 店長簽章與日期高亮壓印
+  // 壓印店長去背章
   document.getElementById('sig-block-manager').innerHTML = getSigHTML("【店長端】", f.managerSig, f.evalDate);
   
   highlightMetricScores(f.scores); isReadOnlyMode = true;
@@ -286,7 +284,6 @@ function renderSingleFormToView(f) {
 
   const role = currentUser.role; setupGlobalSavedSignature();
   
-  // 各層級長官簽核歷程與真實圖章代出
   if (f.eduData && f.eduData.score1) showEduSectionReadOnly(f, f.evalDate);
   if (f.areaComment) showAreaSectionReadOnly(cleanAreaComment, loadedAdjustVal, f.evalDate, f.areaSig);
   
@@ -295,8 +292,8 @@ function renderSingleFormToView(f) {
     document.getElementById('sig-block-student').innerHTML = getSigHTML("【儲備幹部學員】", f.studentSig, f.evalDate); 
   }
   if (f.vpComment || f.currentStatus === "結案" || f.currentStatus === "待總經理核定") { 
-    document.getElementById('section-vp').classList.remove('hidden'); document.getElementById('vp-comment').value = f.vpComment || ""; document.getElementById('vp-comment').disabled = true; 
-    document.getElementById('sig-block-vp').innerHTML = getSigHTML("【營業副總】", f.vpSig, f.evalDate); 
+    document.getElementById('section-vp').classList.remove('hidden'); document.getElementById('vp-comment').value = f.vpComment || ""; document.getElementById('vp-comment').disabled = (role !== "營業副總"); 
+    document.getElementById('sig-block-vp').innerHTML = f.vpSig ? getSigHTML("【營業副總】", f.vpSig, f.evalDate) : ""; 
   }
   if (f.gmSig || f.currentStatus === "結案") { 
     document.getElementById('section-gm').classList.remove('hidden'); 
@@ -316,7 +313,7 @@ function renderSingleFormToView(f) {
     document.getElementById('section-student-confirm').classList.remove('hidden'); toggleSignatureType('signature-canvas-student', 'use-saved-sig-student');
   }
   else if (role === "營業副總") {
-    document.getElementById('section-vp').classList.remove('hidden'); document.getElementById('vp-comment').value = ''; document.getElementById('vp-comment').disabled = false;
+    document.getElementById('section-vp').classList.remove('hidden'); document.getElementById('vp-comment').value = f.vpComment || ''; document.getElementById('vp-comment').disabled = false;
     toggleSignatureType('signature-canvas-vp', 'use-saved-sig-vp');
   } 
   else if (role === "總經理") {
@@ -345,7 +342,7 @@ function showEduSectionReadOnly(f, date) {
   document.getElementById('edu-comment').value = cleanEduComment;
   document.getElementById('section-edu').querySelectorAll('input, textarea').forEach(el => el.disabled = true);
   
-  // 教育中心簽章與日期高亮壓印
+  // 壓印中心去背章
   document.getElementById('sig-block-edu').innerHTML = getSigHTML("【教育中心】", f.eduData.sig, date);
 }
 
@@ -354,7 +351,7 @@ function showAreaSectionReadOnly(cleanComment, adjustVal, date, sigUrl) {
   document.getElementById('area-adjust-score').disabled = true; document.getElementById('area-comment').value = cleanComment;
   document.getElementById('area-comment').disabled = true;
   
-  // 區主管簽章與日期高亮壓印
+  // 壓印督導去背章
   document.getElementById('sig-block-area').innerHTML = getSigHTML("【區主管】", sigUrl, date);
 }
 
@@ -425,7 +422,7 @@ function submitForm() {
   }
   else if (role === "學員") { payload = { rowIndex: window.currentFormRowIndex, empId: currentUser.empId, signatureType: useSavedSig ? "saved" : "manual", signatureBase64: useSavedSig ? "" : canvasMap['signature-canvas-student'].cvs.toDataURL(), savedSignaturePath: currentUser.savedSignature }; }
   else if (role === "營業副總") {
-    const vpComment = document.getElementById('vp-comment').value.trim(); // 🌟 評語自由選填，不卡控文字，有簽名即放行
+    const vpComment = document.getElementById('vp-comment').value.trim(); // 🌟 完美呈現規格四：副總評語選填放行，只要有核章即可直接流轉！
     payload = { rowIndex: window.currentFormRowIndex, empId: currentUser.empId, vpComment: vpComment, signatureType: useSavedSig ? "saved" : "manual", signatureBase64: useSavedSig ? "" : canvasMap['signature-canvas-vp'].cvs.toDataURL(), savedSignaturePath: currentUser.savedSignature };
   }
   else if (role === "總經理") { payload = { rowIndex: window.currentFormRowIndex, empId: currentUser.empId, signatureType: useSavedSig ? "saved" : "manual", signatureBase64: useSavedSig ? "" : canvasMap['signature-canvas-gm'].cvs.toDataURL(), savedSignaturePath: currentUser.savedSignature }; }
