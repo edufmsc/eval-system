@@ -1,6 +1,6 @@
 // =================================================================
 // 前端模組 4：評分、表單顯示、各階段流轉與唯讀追蹤
-// 完整替換版：維持原橘色／米白／圓角樣式
+// 管理指派完整替換版：維持原橘色／米白／圓角樣式
 // =================================================================
 
 (function () {
@@ -101,6 +101,7 @@ window.currentSelectedTrackingForm = null;
 window.currentActionMode = "reject";
 window.managerScoresLocked = true;
 window.adminManagementMode = false;
+window.managementAssigneeCache = [];
 
 
 /* ---------------------------------------------------------------
@@ -411,6 +412,11 @@ function ensureForceResetOptions() {
   if (!select || select.dataset.upgraded === "1") return;
 
   select.dataset.upgraded = "1";
+  select.setAttribute(
+    "onchange",
+    "loadManagementAssignees()"
+  );
+
   select.innerHTML = `
     <option value="">-- 請選取欲強制流轉至哪一個階段 --</option>
     <option value="${UI_STATUS.MANAGER_RETURNED}">退回【待門市店主管修改】</option>
@@ -950,7 +956,13 @@ function getSignatureConfig(role) {
  * ------------------------------------------------------------- */
 
 function loadUnderlings(store) {
-  callAPI("getUnderlings", { store }, (list) => {
+  callAPI(
+    "getUnderlings",
+    {
+      store: store,
+      empId: currentUser ? currentUser.empId : ""
+    },
+    (list) => {
     const allCases = Array.isArray(list) ? list : [];
 
     // 門市店主管的待辦與追蹤正式分開。
@@ -1384,7 +1396,7 @@ function toggleAdminManagementMode(enable) {
 
   if (enable) {
     const confirmed = confirm(
-      "管理模式可以強制調整正式考核流程。確定要進入嗎？"
+      "管理模式可以指定正式考核流程與特定承辦人。確定要進入嗎？"
     );
 
     if (!confirmed) {
@@ -1416,34 +1428,35 @@ function toggleAdminManagementMode(enable) {
     );
   }
 
+  const controlBox = document.getElementById(
+    "admin-control-box"
+  );
+
   const adminBox = document.getElementById(
     "admin-console-box"
   );
-
-  if (adminBox) {
-    adminBox.classList.toggle(
-      "hidden",
-      !window.adminManagementMode
-    );
-  }
 
   const forceContainer = document.getElementById(
     "force-reset-container"
   );
 
-  if (forceContainer) {
-    forceContainer.classList.toggle(
-      "hidden",
-      !window.adminManagementMode
-    );
-  }
+  [controlBox, adminBox, forceContainer].forEach((element) => {
+    if (element) {
+      element.classList.toggle(
+        "hidden",
+        !window.adminManagementMode
+      );
+    }
+  });
 
-  if (!window.adminManagementMode) {
-    const select = document.getElementById(
-      "force-reset-select"
-    );
+  if (window.adminManagementMode) {
+    const form = getCurrentSelectedFormForAdmin();
 
-    if (select) select.value = "";
+    if (form) {
+      updateManagementAssignmentSummary(form);
+    }
+  } else {
+    resetManagementControls();
   }
 }
 
@@ -1459,10 +1472,17 @@ function onPendingFormChange() {
   }
 
   clearOtherSelects("pending");
-  renderSingleFormToView(
-    pendingFormCache[Number(select.value)],
-    false
-  );
+  const form = pendingFormCache[Number(select.value)];
+
+  renderSingleFormToView(form, false);
+
+  if (
+    window.adminManagementMode &&
+    currentUser.role === "教育中心"
+  ) {
+    updateManagementAssignmentSummary(form);
+    resetManagementControls(false);
+  }
 }
 
 function onAdminProgressFormChange() {
@@ -1476,10 +1496,18 @@ function onAdminProgressFormChange() {
   }
 
   clearOtherSelects("progress");
-  renderSingleFormToView(
-    window.adminProgressCache[Number(select.value)],
-    true
-  );
+  const form =
+    window.adminProgressCache[Number(select.value)];
+
+  renderSingleFormToView(form, true);
+
+  if (
+    window.adminManagementMode &&
+    currentUser.role === "教育中心"
+  ) {
+    updateManagementAssignmentSummary(form);
+    resetManagementControls(false);
+  }
 }
 
 function loadHistoryList() {
@@ -1552,6 +1580,14 @@ function onHistoryFormChange() {
 
   renderSingleFormToView(form, true);
   configurePdfActionBox(form);
+
+  if (
+    window.adminManagementMode &&
+    currentUser.role === "教育中心"
+  ) {
+    updateManagementAssignmentSummary(form);
+    resetManagementControls(false);
+  }
 
   showReadOnlyBanner(
     form.currentStatus === UI_STATUS.PDF_PENDING
@@ -2395,7 +2431,181 @@ function handleFlowResult(result) {
   loadHistoryList();
 }
 
+function resetManagementControls(clearSummary = true) {
+  const statusSelect = document.getElementById(
+    "force-reset-select"
+  );
+  const assigneeSelect = document.getElementById(
+    "management-assignee-select"
+  );
+  const reasonInput = document.getElementById(
+    "management-reason"
+  );
+  const targetRoleText = document.getElementById(
+    "management-target-role"
+  );
+  const summary = document.getElementById(
+    "management-current-assignment"
+  );
+
+  if (statusSelect) statusSelect.value = "";
+
+  if (assigneeSelect) {
+    assigneeSelect.innerHTML =
+      '<option value="">-- 請先選擇目標階段 --</option>';
+    assigneeSelect.disabled = true;
+  }
+
+  if (reasonInput) reasonInput.value = "";
+  if (targetRoleText) targetRoleText.innerText = "尚未選擇";
+  if (clearSummary && summary) {
+    summary.innerText = "請先從上方選擇一筆考核表。";
+  }
+
+  window.managementAssigneeCache = [];
+}
+
+
+function updateManagementAssignmentSummary(form) {
+  const summary = document.getElementById(
+    "management-current-assignment"
+  );
+
+  if (!summary || !form) return;
+
+  const assignedRole = form.assignedRole || "未指定";
+  const assignedEmpId = form.assignedEmpId || "未指定";
+  const managementText = form.managementReason
+    ? `；最近管理原因：${form.managementReason}`
+    : "";
+
+  summary.innerText =
+    `目前流程：${form.currentStatus}；` +
+    `指派角色：${assignedRole}；` +
+    `指派人員：${assignedEmpId}` +
+    managementText;
+}
+
+
+function loadManagementAssignees() {
+  if (
+    !currentUser ||
+    currentUser.role !== "教育中心" ||
+    !window.adminManagementMode
+  ) {
+    return;
+  }
+
+  const form = getCurrentSelectedFormForAdmin();
+  const targetStatus = getTrimmedValue(
+    "force-reset-select"
+  );
+  const assigneeSelect = document.getElementById(
+    "management-assignee-select"
+  );
+  const targetRoleText = document.getElementById(
+    "management-target-role"
+  );
+
+  if (!assigneeSelect) return;
+
+  if (!form) {
+    alert("請先選擇要管理的考核表。");
+    assigneeSelect.disabled = true;
+    return;
+  }
+
+  if (!targetStatus) {
+    assigneeSelect.innerHTML =
+      '<option value="">-- 請先選擇目標階段 --</option>';
+    assigneeSelect.disabled = true;
+    if (targetRoleText) targetRoleText.innerText = "尚未選擇";
+    return;
+  }
+
+  assigneeSelect.innerHTML =
+    '<option value="">載入符合條件的人員中...</option>';
+  assigneeSelect.disabled = true;
+
+  callAPI(
+    "getManagementAssignees",
+    {
+      rowIndex: form.rowIndex,
+      targetStatus,
+      empId: currentUser.empId
+    },
+    (result) => {
+      if (!result || result.success !== true) {
+        assigneeSelect.innerHTML =
+          '<option value="">無法取得人員清單</option>';
+        alert(
+          result && result.message
+            ? result.message
+            : "無法取得可指派人員。"
+        );
+        return;
+      }
+
+      window.managementAssigneeCache = Array.isArray(
+        result.candidates
+      )
+        ? result.candidates
+        : [];
+
+      if (targetRoleText) {
+        targetRoleText.innerText =
+          result.targetRole || "結案／無承辦角色";
+      }
+
+      if (!result.targetRole) {
+        assigneeSelect.innerHTML =
+          '<option value="">結案階段不指定承辦人</option>';
+        assigneeSelect.disabled = true;
+        return;
+      }
+
+      assigneeSelect.innerHTML =
+        '<option value="">-- 不指定特定人員，由該角色符合權限者承辦 --</option>';
+
+      window.managementAssigneeCache.forEach((employee) => {
+        const scopeText = [
+          employee.store,
+          employee.area,
+          employee.department
+        ]
+          .filter(Boolean)
+          .join("／");
+
+        assigneeSelect.insertAdjacentHTML(
+          "beforeend",
+          `<option value="${escapeHtml(employee.employeeId)}">${escapeHtml(employee.name)}（${escapeHtml(employee.employeeId)}${scopeText ? "｜" + escapeHtml(scopeText) : ""}）</option>`
+        );
+      });
+
+      assigneeSelect.disabled = false;
+
+      if (
+        result.targetRole === "受評人員" &&
+        window.managementAssigneeCache.length === 1
+      ) {
+        assigneeSelect.value =
+          window.managementAssigneeCache[0].employeeId;
+      }
+    }
+  );
+}
+
+
 function executeForceReset() {
+  if (
+    !currentUser ||
+    currentUser.role !== "教育中心" ||
+    !window.adminManagementMode
+  ) {
+    alert("只有教育中心管理模式可以執行此功能。");
+    return;
+  }
+
   const form = getCurrentSelectedFormForAdmin();
 
   if (!form) {
@@ -2412,18 +2622,37 @@ function executeForceReset() {
     return;
   }
 
-  const reason = prompt(
-    "請填寫本次管理流轉原因："
+  const assignedEmpId = getTrimmedValue(
+    "management-assignee-select"
   );
 
-  if (!reason || !reason.trim()) {
-    alert("管理原因為必填。");
+  const reason = getTrimmedValue(
+    "management-reason"
+  );
+
+  if (!reason) {
+    alert("管理原因／備註為必填。");
     return;
   }
 
+  const targetRoleText = document.getElementById(
+    "management-target-role"
+  );
+
+  const targetRole = targetRoleText
+    ? targetRoleText.innerText
+    : "";
+
+  const assigneeText = assignedEmpId
+    ? assignedEmpId
+    : "不指定特定人員";
+
   if (
     !confirm(
-      `確定使用最高管理權限，將此表單調整為「${targetStatus}」嗎？`
+      `確定將此表單調整為「${targetStatus}」？\n\n` +
+      `目標角色：${targetRole}\n` +
+      `指定人員：${assigneeText}\n\n` +
+      "既有分數、評語及簽名均會保留。"
     )
   ) {
     return;
@@ -2435,7 +2664,8 @@ function executeForceReset() {
       rowIndex: form.rowIndex,
       targetStatus,
       empId: currentUser.empId,
-      managementReason: reason.trim()
+      managementReason: reason,
+      assignedEmpId
     },
     (result) => {
       alert(
@@ -2444,11 +2674,18 @@ function executeForceReset() {
           : "管理操作完成。"
       );
 
+      if (!result || result.success !== true) {
+        return;
+      }
+
+      resetManagementControls();
+      lockAllWorkflow();
       reloadPendingList();
       loadHistoryList();
     }
   );
 }
+
 
 function getCurrentSelectedFormForAdmin() {
   const pending = document.getElementById(
@@ -2756,6 +2993,10 @@ function lockAllWorkflow() {
   ].forEach(hideElement);
 
   window.currentSelectedPdfForm = null;
+
+  if (!window.adminManagementMode) {
+    hideElement("admin-control-box");
+  }
 }
 
 function showLoading(show) {
