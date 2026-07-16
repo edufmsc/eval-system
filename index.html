@@ -7,7 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   
-  <!-- 🌟 零延遲極速阻斷抗閃現防線：在 HTML 身體加載前鎖死登入框，絕無短暫閃爍！ -->
+  <!-- 🌟 零延遲極速阻斷抗閃現防線：在 Body 渲染前，直接在網頁頭部阻斷登入框顯示 -->
   <script>
     if (localStorage.getItem('hsz_eval_session')) {
       document.documentElement.classList.add('hsz-logged-in');
@@ -20,6 +20,7 @@
     .brand-border { border-color: #E05315; }
     .touch-none { touch-action: none; }
     
+    /* 配合抗閃現防線之極速 CSS 隱顯硬核鎖 */
     .hsz-logged-in #login-container { display: none !important; }
     .hsz-logged-in #app-container { display: block !important; }
   </style>
@@ -102,7 +103,7 @@
               </select>
               <button onclick="executeForceReset()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 rounded-xl text-base shadow transition"><i class="fa-solid fa-bolt mr-1"></i>執行強制流轉</button>
               
-              <!-- 🌟 完美落實需求一：手動強制重製產出 PDF 按鈕，防失聯備份機制 -->
+              <!-- 手動重新產生 PDF 按鈕 -->
               <button onclick="manualRegeneratePDF()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl text-base shadow transition"><i class="fa-solid fa-file-pdf mr-1"></i>手動重新產生PDF</button>
             </div>
           </div>
@@ -245,7 +246,6 @@
             </div>
           </div>
 
-          <!-- 雙按鈕橫向排版 -->
           <div class="flex flex-col sm:flex-row gap-4 w-full">
             <button id="btn-reject-main" onclick="rejectForm()" class="hidden bg-red-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg text-lg hover:bg-red-700 transition sm:w-1/3"></button>
             <button id="btn-submit-main" onclick="submitForm()" class="brand-bg text-white font-bold py-4 px-6 rounded-xl shadow-lg text-lg hover:bg-orange-700 transition flex-1"></button>
@@ -256,7 +256,6 @@
     </div>
   </div>
 
-  <!-- 轉圈圈加載指示元件防線 -->
   <div id="loading-spinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] pointer-events-auto hidden">
     <div class="bg-white p-6 rounded-2xl flex flex-col items-center shadow-2xl">
       <div class="animate-spin rounded-full h-12 w-12 border-t-4 brand-border border-gray-200"></div>
@@ -264,7 +263,6 @@
     </div>
   </div>
 
-  <!-- 按正確工程順序載入模組 -->
   <script src="api_config.js"></script>
   <script src="signature_canvas.js"></script>
   <script src="login_module.js"></script>
