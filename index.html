@@ -6,11 +6,22 @@
   <title>鬍鬚張-月考核表 (電腦專用版)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  
+  <script>
+    if (localStorage.getItem('hsz_eval_session')) {
+      document.documentElement.classList.add('hsz-logged-in');
+    }
+  </script>
+  
   <style>
     .brand-bg { background-color: #E05315; }
     .brand-text { color: #E05315; }
     .brand-border { border-color: #E05315; }
     .touch-none { touch-action: none; }
+    
+    /* 配合抗閃現防線之極速 CSS 隱顯硬核鎖 */
+    .hsz-logged-in #login-container { display: none !important; }
+    .hsz-logged-in #app-container { display: block !important; }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans w-full overflow-x-hidden flex flex-col items-center justify-center">
@@ -146,11 +157,11 @@
 
             <div class="grid grid-cols-2 gap-4 mt-2" id="edu-data-依据組件">
               <div>
-                <label class="block text-sm font-bold text-amber-800 mb-1"><i class="fa-solid fa-calculator mr-1"></i> 職能積分累計實際總分數 (作範本數據依據)</label>
+                <label class="block text-sm font-bold text-amber-800 mb-1"><i class="fa-solid fa-calculator mr-1"></i> 職能積分累計實際總分數</label>
                 <input type="number" id="edu-accum" class="w-full p-2.5 border border-amber-300 rounded-xl text-base bg-amber-50/50" placeholder="對應紙本，例如: 236">
               </div>
               <div>
-                <label class="block text-sm font-bold text-amber-800 mb-1"><i class="fa-solid fa-book mr-1"></i> OJT完成進度累計實際篇數 (作範本數據依據)</label>
+                <label class="block text-sm font-bold text-amber-800 mb-1"><i class="fa-solid fa-book mr-1"></i> OJT完成進度累計實際篇數</label>
                 <input type="number" id="edu-ojt" class="w-full p-2.5 border border-amber-300 rounded-xl text-base bg-amber-50/50" placeholder="對應紙本，例如: 4">
               </div>
             </div>
@@ -171,7 +182,7 @@
             <h3 class="text-lg font-black text-sky-900 border-l-4 border-sky-500 pl-3">第三關：區主管考評審核</h3>
             <div class="grid grid-cols-1 gap-4">
               <div>
-                <label class="block text-sm font-bold text-sky-800 mb-1">依學員表現分數調整 (自由填寫數字格，可輸入 -10 ~ +10)：</label>
+                <label class="block text-sm font-bold text-sky-800 mb-1">依學員表現分數調整 (限輸入 -10 ~ +10)：</label>
                 <input type="number" id="area-adjust-score" min="-10" max="10" step="1" onkeyup="updateTotalScore()" onchange="updateTotalScore()" class="w-full p-3 border border-gray-300 rounded-xl text-base font-bold text-orange-600 bg-white" placeholder="請輸入加減分數">
               </div>
               <div><label class="block text-sm font-bold text-sky-800 mb-1">區主管評語：</label><textarea id="area-comment" class="w-full p-3 border border-sky-200 rounded-xl text-base h-24 resize-none"></textarea></div>
@@ -179,7 +190,10 @@
             <div id="sig-block-area" class="bg-white p-4 rounded-xl border border-gray-200 space-y-2">
               <label class="block text-gray-700 text-sm font-bold">區主管核章：</label>
               <div id="saved-sig-box-area" class="hidden mb-2"><label class="inline-flex items-center cursor-pointer py-1"><input type="checkbox" id="use-saved-sig-area" onchange="toggleSignatureType('signature-canvas-area', 'use-saved-sig-area')" class="w-5 h-5 rounded text-orange-600 border-gray-300"><span class="ml-2 text-sm font-bold text-gray-700">使用系統預存簽名確認</span></label></div>
-              <div id="canvas-wrapper-signature-canvas-area" class="relative bg-white border-2 border-gray-300 rounded-xl overflow-hidden h-44 w-full"><canvas id="signature-canvas-area" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas><button type="button" onclick="clearSig('signature-canvas-area')" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 text-gray-700 text-xs font-bold rounded-lg">清除</button></div>
+              <div id="canvas-wrapper-signature-canvas-area" class="relative bg-white border-2 border-gray-300 rounded-xl overflow-hidden h-44 w-full">
+                <canvas id="signature-canvas-area" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas>
+                <button type="button" onclick="clearSig('signature-canvas-area')" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 text-gray-700 text-xs font-bold rounded-lg">清除</button>
+              </div>
             </div>
           </div>
 
@@ -190,14 +204,17 @@
             <div id="sig-block-student" class="bg-white p-4 rounded-xl border border-gray-200 space-y-2">
               <label class="block text-sm font-bold text-gray-700">學員親筆簽章：</label>
               <div id="saved-sig-box-student" class="hidden mb-2"><label class="inline-flex items-center cursor-pointer py-1"><input type="checkbox" id="use-saved-sig-student" onchange="toggleSignatureType('signature-canvas-student', 'use-saved-sig-student')" class="w-5 h-5 rounded text-orange-600 border-gray-300"><span class="ml-2 text-sm font-bold text-gray-700">使用系統預存簽名確認</span></label></div>
-              <div id="canvas-wrapper-signature-canvas-student" class="relative bg-white border-2 border-gray-300 rounded-xl overflow-hidden h-44 w-full"><canvas id="signature-canvas-student" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas><button type="button" onclick="clearSig('signature-canvas-student')" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 text-gray-700 text-xs font-bold rounded-lg">清除</button></div>
+              <div id="canvas-wrapper-signature-canvas-student" class="relative bg-white border-2 border-gray-300 rounded-xl overflow-hidden h-44 w-full">
+                <canvas id="signature-canvas-student" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas>
+                <button type="button" onclick="clearSig('signature-canvas-student')" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 text-gray-700 text-xs font-bold rounded-lg">清除</button>
+              </div>
             </div>
           </div>
 
           <div id="section-vp" class="hidden space-y-4 bg-teal-50/20 p-6 rounded-2xl border border-teal-100">
             <hr class="border-dashed border-gray-300">
             <h3 class="text-lg font-black text-gray-800 border-l-4 border-teal-600 pl-3">第五關：營業副總簽核審查</h3>
-            <div class="w-full"><label class="block text-sm font-bold text-teal-800 mb-1">營業副總裁決評語：</label><textarea id="vp-comment" class="w-full p-3 border border-teal-300 rounded-xl text-base h-24 resize-none"></textarea></div>
+            <div class="w-full"><label class="block text-sm font-bold text-teal-800 mb-1">營業副總裁決評語：</label><textarea id="vp-comment" class="w-full p-3 border border-teal-300 rounded-xl text-base h-24 resize-none" placeholder="選填..."></textarea></div>
             <div id="sig-block-vp" class="bg-white p-4 rounded-xl border border-gray-200 space-y-2">
               <label class="block text-sm font-bold text-gray-700">營業副總核章：</label>
               <div id="saved-sig-box-vp" class="hidden mb-2"><label class="inline-flex items-center cursor-pointer py-1"><input type="checkbox" id="use-saved-sig-vp" onchange="toggleSignatureType('signature-canvas-vp', 'use-saved-sig-vp')" class="w-5 h-5 rounded text-orange-600 border-gray-300"><span class="ml-2 text-sm font-bold text-gray-700">使用系統預存簽名確認</span></label></div>
