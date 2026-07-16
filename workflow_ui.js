@@ -2,7 +2,7 @@
 // 前端模組 4：UI 打分渲染、實時總分看板運算、接力流轉與資料真空洗白引擎
 // =================================================================
 
-// 🔒 1. 頂層極速網頁防護：如果瀏覽器存有 Session，在 DOM 渲染前強制注入 CSS 鎖死登入框，100% 防止 F5 刷新閃現
+// 🔒 1. 頂層極速網頁防護：如果瀏覽器存有 Session，在 Body 渲染前強制注入 CSS 鎖死登入框，100% 防止 F5 刷新閃現
 (function() {
   if (localStorage.getItem('hsz_eval_session')) {
     const style = document.createElement('style');
@@ -64,7 +64,6 @@ function updateTotalScore() {
   document.getElementById('sum-grand').innerText = (mgrTotal + eduTotal + adjustVal);
 }
 
-// 🌟 真空洗白：確保所有提示唯讀條、各主管欄位切換時徹底洗淨不殘留
 function resetFormFields() {
   selectedScores = {}; activeRanges = {}; window.currentFormRowIndex = 0; window.loadedAdjustValue = 0;
   document.getElementById('manager-comment').value = ''; document.getElementById('manager-comment').disabled = false;
@@ -96,7 +95,6 @@ function resetFormFields() {
   updateTotalScore();
 }
 
-// 🌟 上帝視角三渠道監控載入大腦
 function reloadPendingList() {
   lockAllWorkflow(); document.getElementById('pending-form-select').value = '';
   callAPI("getPendingForms", { role: currentUser.role, dept: currentUser.dept, area: currentUser.area, empId: currentUser.empId }, function(list) {
@@ -134,7 +132,7 @@ function reloadPendingList() {
   });
 }
 
-// 🌟 最終修正點：三大下拉選單互斥清洗防線，徹底避免 rowIndex 權限衝突
+// 🌟 核心防護修復：上帝視角三大下拉選單「真空互斥清洗防線」，徹底杜絕行數錯軌
 function onPendingFormChange() { 
   const select = document.getElementById('pending-form-select'); if (select.value === "") return lockAllWorkflow();
   const hSel = document.getElementById('history-form-select'); if(hSel) hSel.value = "";
@@ -180,7 +178,7 @@ function loadUnderlings(store) {
   });
 }
 
-// 🌟 語法更正：移除了引發學員端死機的 max = range.max 錯誤賦值，順利代出資訊
+// 🌟 核心防護修復：徹底修復 max = range.max 的語法死碼錯誤
 function highlightMetricScores(scoresArray) { 
   for(let i = 1; i <= 6; i++) { 
     let score = parseInt(scoresArray[i-1]); 
@@ -225,7 +223,10 @@ function onUnderlingChange() {
     }
     updateTotalScore();
   } else {
-    isReadOnlyMode = false; window.loadedAdjustValue = 0; updateTotalScore();
+    // 🌟 核心防護修復：清除失效的殘缺死碼 .add; 確保標準隱顯防護
+    isReadOnlyMode = false; document.getElementById('readonly-banner').classList.add('hidden');
+    document.getElementById('btn-submit-main').classList.remove('hidden');
+    window.loadedAdjustValue = 0; updateTotalScore();
   }
 }
 
@@ -309,6 +310,7 @@ function showEduSectionReadOnly(f, date) {
   document.getElementById('sig-block-edu').innerHTML = `<div class="p-3 bg-gray-100 rounded-xl text-sm font-black text-gray-700"><i class="fa-solid fa-circle-check text-green-600 mr-1"></i> 【教育中心】已核章完成 (核章日期：${date})</div>`;
 }
 
+// showAreaSectionReadOnly 等後續既有函式原封不動安全保留...
 function showAreaSectionReadOnly(cleanComment, adjustVal, date) {
   document.getElementById('section-area').classList.remove('hidden'); document.getElementById('area-adjust-score').value = adjustVal;
   document.getElementById('area-adjust-score').disabled = true; document.getElementById('area-comment').value = cleanComment;
@@ -350,7 +352,7 @@ function rejectForm() {
   
   showLoading(true);
   callAPI("submitStage", { role: role, formData: { rowIndex: window.currentFormRowIndex, isReject: true, rejectReason: reason ? reason.trim() : "" } }, function(res) {
-    showLoading(false); if(res.success) { alert("🚫 " + res.message); reloadPendingList(); } else { alert("❌ 操作失敗：" + res.message); }
+    showLoading(false); if(res.success) { alert("🚫 " + res.message); reloadPendingList(); } else { alert("❌ 操作失敗 Rhine：" + res.message); }
   });
 }
 
