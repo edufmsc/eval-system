@@ -115,6 +115,7 @@ function ensureDynamicUiEnhancements() {
   ensureGmCommentField();
   ensureForceResetOptions();
   ensureTrackingBox();
+  ensurePdfActionBox();
 
   const storeLabel = document.querySelector("#store-select-box label");
   if (storeLabel) {
@@ -340,6 +341,67 @@ function ensureTrackingBox() {
   anchor.parentNode.insertBefore(
     box,
     anchor.nextSibling
+  );
+}
+
+
+function ensurePdfActionBox() {
+  if (document.getElementById("pdf-action-box")) {
+    return;
+  }
+
+  const infoCard =
+    document.getElementById("info-card-container");
+
+  if (!infoCard || !infoCard.parentNode) {
+    return;
+  }
+
+  const box = document.createElement("div");
+
+  box.id = "pdf-action-box";
+  box.className =
+    "hidden bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3";
+
+  box.innerHTML = `
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <p class="font-black text-emerald-800">
+          <i class="fa-solid fa-file-pdf mr-1"></i>
+          結案 PDF
+        </p>
+        <p id="pdf-action-status" class="text-sm font-bold text-gray-600 mt-1">
+          PDF狀態載入中
+        </p>
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <button
+          type="button"
+          id="btn-open-current-pdf"
+          onclick="openCurrentPdf()"
+          class="hidden px-4 py-2 rounded-xl border border-emerald-300 bg-white text-emerald-800 font-bold hover:bg-emerald-100 transition"
+        >
+          <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i>
+          開啟目前 PDF
+        </button>
+
+        <button
+          type="button"
+          id="btn-regenerate-current-pdf"
+          onclick="manualRegeneratePDF()"
+          class="hidden px-4 py-2 rounded-xl bg-emerald-700 text-white font-bold hover:bg-emerald-800 transition"
+        >
+          <i class="fa-solid fa-rotate mr-1"></i>
+          重新產生 PDF
+        </button>
+      </div>
+    </div>
+  `;
+
+  infoCard.parentNode.insertBefore(
+    box,
+    infoCard.nextSibling
   );
 }
 
@@ -712,6 +774,7 @@ function resetFormFields() {
   window.currentFormRowIndex = 0;
   window.currentSelectedManagerCase = null;
   window.currentSelectedTrackingForm = null;
+  window.currentSelectedPdfForm = null;
   window.currentActionMode = "reject";
   window.managerScoresLocked = true;
   window.loadedAdjustValue = 0;
@@ -765,6 +828,7 @@ function resetFormFields() {
   }
 
   hideElement("readonly-banner");
+  hideElement("pdf-action-box");
   setText("banner-text", "");
   hideElement("btn-reject-main");
 
@@ -1101,6 +1165,26 @@ function loadTrackingList() {
     return;
   }
 
+  const trackingBox =
+    document.getElementById(
+      "tracking-select-box"
+    );
+
+  // 總經理不使用「已送出／流程追蹤」。
+  // 總經理以「待我處理＋全公司進行中監控＋歷史資料」查看。
+  if (currentUser.role === "總經理") {
+    if (trackingBox) {
+      trackingBox.classList.add("hidden");
+    }
+
+    window.trackingFormCache = [];
+    return;
+  }
+
+  if (trackingBox) {
+    trackingBox.classList.remove("hidden");
+  }
+
   callAPI(
     "getTrackingForms",
     {
@@ -1196,10 +1280,24 @@ function onTrackingFormChange() {
 
 
 function loadProgressMonitor() {
-  const roles = ["教育中心", "區主管", "營業副總"];
+  const roles = ["教育中心", "總經理"];
 
+  const progressBox =
+    document.getElementById(
+      "admin-progress-box"
+    );
+
+  // 藍色全公司流程監控只提供教育中心與總經理。
+  // 門市店主管、區主管、受評人員及營業副總使用自己的流程追蹤區即可。
   if (!roles.includes(currentUser.role)) {
+    if (progressBox) {
+      progressBox.classList.add("hidden");
+    }
     return;
+  }
+
+  if (progressBox) {
+    progressBox.classList.remove("hidden");
   }
 
   if (!document.getElementById("admin-progress-box")) {
@@ -1217,7 +1315,9 @@ function loadProgressMonitor() {
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <label class="block text-base font-black text-blue-700">
             <i class="fa-solid fa-eye mr-1"></i>
-            進行中流程監控（預設唯讀）
+            ${currentUser.role === "總經理"
+              ? "全公司進行中流程監控（唯讀）"
+              : "進行中流程監控（預設唯讀）"}
           </label>
           <div id="admin-mode-buttons" class="${currentUser.role === "教育中心" ? "" : "hidden"} flex gap-2">
             <button type="button" id="btn-enter-admin-mode" onclick="toggleAdminManagementMode(true)" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold">
@@ -1451,6 +1551,7 @@ function onHistoryFormChange() {
     historyFormCache[Number(select.value)];
 
   renderSingleFormToView(form, true);
+  configurePdfActionBox(form);
 
   showReadOnlyBanner(
     form.currentStatus === UI_STATUS.PDF_PENDING
@@ -2387,9 +2488,111 @@ function getCurrentSelectedFormForAdmin() {
   return null;
 }
 
+function configurePdfActionBox(form) {
+  const box = document.getElementById(
+    "pdf-action-box"
+  );
+
+  if (!box || !form || !currentUser) {
+    return;
+  }
+
+  const allowedRoles = [
+    "教育中心",
+    "總經理"
+  ];
+
+  if (!allowedRoles.includes(currentUser.role)) {
+    box.classList.add("hidden");
+    return;
+  }
+
+  const isClosed =
+    form.currentStatus === UI_STATUS.CLOSED ||
+    form.currentStatus === UI_STATUS.PDF_PENDING;
+
+  if (!isClosed) {
+    box.classList.add("hidden");
+    return;
+  }
+
+  box.classList.remove("hidden");
+
+  const pdfUrl =
+    String(form.pdfUrl || "").trim();
+
+  setText(
+    "pdf-action-status",
+    form.currentStatus === UI_STATUS.PDF_PENDING
+      ? "總經理已完成簽核，但PDF尚未成功產生。"
+      : (
+          pdfUrl
+            ? "PDF已成功產生，可開啟查看或重新產生。"
+            : "案件已結案，但目前未讀取到PDF網址。"
+        )
+  );
+
+  const openButton =
+    document.getElementById(
+      "btn-open-current-pdf"
+    );
+
+  const regenerateButton =
+    document.getElementById(
+      "btn-regenerate-current-pdf"
+    );
+
+  if (openButton) {
+    openButton.classList.toggle(
+      "hidden",
+      !pdfUrl
+    );
+  }
+
+  if (regenerateButton) {
+    regenerateButton.classList.remove(
+      "hidden"
+    );
+  }
+
+  window.currentSelectedPdfForm = form;
+}
+
+function openCurrentPdf() {
+  const form =
+    window.currentSelectedPdfForm;
+
+  const pdfUrl =
+    form
+      ? String(form.pdfUrl || "").trim()
+      : "";
+
+  if (!pdfUrl) {
+    alert("目前沒有可開啟的PDF網址。");
+    return;
+  }
+
+  window.open(
+    pdfUrl,
+    "_blank",
+    "noopener,noreferrer"
+  );
+}
+
+
 function manualRegeneratePDF() {
   if (!window.currentFormRowIndex) {
     alert("請先選擇要重新產生PDF的考核表。");
+    return;
+  }
+
+  if (
+    !currentUser ||
+    !["教育中心", "總經理"].includes(
+      currentUser.role
+    )
+  ) {
+    alert("只有教育中心或總經理可以重新產生PDF。");
     return;
   }
 
@@ -2403,13 +2606,41 @@ function manualRegeneratePDF() {
       rowIndex: window.currentFormRowIndex
     },
     (result) => {
+      if (!result || !result.success) {
+        alert(
+          result && result.message
+            ? result.message
+            : "PDF重新產生失敗。"
+        );
+        return;
+      }
+
       alert(
-        result && result.message
-          ? result.message
-          : "PDF指令已送出。"
+        result.message ||
+        "PDF已成功重新產生。"
       );
 
+      if (
+        result.fileUrl &&
+        window.currentSelectedPdfForm
+      ) {
+        window.currentSelectedPdfForm.pdfUrl =
+          result.fileUrl;
+      }
+
       loadHistoryList();
+
+      const historySelect =
+        document.getElementById(
+          "history-form-select"
+        );
+
+      if (historySelect) {
+        historySelect.value = "";
+      }
+
+      hideElement("pdf-action-box");
+      lockAllWorkflow();
     }
   );
 }
