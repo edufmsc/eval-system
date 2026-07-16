@@ -2,7 +2,6 @@
 // 前端模組 3：安全登入防線與 F5 刷新原地復活快取記憶模組
 // =================================================================
 
-// F5 重新整理自動攔截回復器
 window.onload = function() { 
   renderMetrics(); 
   const savedSession = localStorage.getItem('hsz_eval_session');
@@ -25,7 +24,6 @@ window.onload = function() {
   }
 };
 
-// 帳密驗證登入
 function handleLogin() {
   const empId = document.getElementById('emp-id').value.trim();
   const idTail = document.getElementById('id-tail').value.trim();
@@ -52,7 +50,6 @@ function handleLogin() {
   });
 }
 
-// 🌟 解決問題 4：登入時如果主檔 M 欄有資料，預設自動幫他打勾勾並收合畫布
 function setupGlobalSavedSignature() {
   if(!currentUser) return;
   const hasSig = currentUser.savedSignature && String(currentUser.savedSignature).trim() !== "";
@@ -65,17 +62,18 @@ function setupGlobalSavedSignature() {
     let boxEl = document.getElementById(boxMap[currentUser.role]);
     if(boxEl) { 
       boxEl.classList.remove('hidden'); 
-      let chkEl = document.getElementById(chkMap[currentUser.role]); if(chkEl) chkEl.checked = true; // 預設強制打勾
+      let chkEl = document.getElementById(chkMap[currentUser.role]); if(chkEl) chkEl.checked = true; 
       toggleSignatureType(cvsMap[currentUser.role], chkMap[currentUser.role]); 
     }
   }
 }
 
-// 登出清空 Session
+// 🌟 核心修正：登出時徹底清理門戶，包含最高管理看板與唯讀橫條一併抹除
 function logout() {
   currentUser = null; localStorage.removeItem('hsz_eval_session');
   document.getElementById('app-container').classList.add('hidden'); document.getElementById('login-container').classList.remove('hidden');
   document.getElementById('store-select-box').classList.add('hidden'); document.getElementById('reviewer-select-box').classList.add('hidden');
+  document.getElementById('admin-control-box').classList.add('hidden'); // 徹底隱藏管理者面板
   document.getElementById('section-edu').classList.add('hidden'); document.getElementById('section-area').classList.add('hidden'); document.getElementById('section-student-confirm').classList.add('hidden'); document.getElementById('section-vp').classList.add('hidden'); document.getElementById('section-gm').classList.add('hidden');
   document.getElementById('emp-id').value = ''; document.getElementById('id-tail').value = '';
   lockAllWorkflow(); renderMetrics();
