@@ -74,7 +74,7 @@ function setupGlobalSavedSignature() {
 function logout() {
   currentUser = null; localStorage.removeItem('hsz_eval_session');
   
-  // 🌟 核心修復：登出時將防閃現鎖一併洗去，讓下一次可以看得到登入頁
+  // 🌟 核心防禦修復：登出時將防閃現極速鎖移除，防範登出後視窗變白畫面！
   document.documentElement.classList.remove('hsz-logged-in'); 
   
   document.getElementById('app-container').classList.add('hidden'); document.getElementById('login-container').classList.remove('hidden');
@@ -82,7 +82,9 @@ function logout() {
   document.getElementById('admin-control-box').classList.add('hidden'); 
   if(document.getElementById('admin-progress-box')) document.getElementById('admin-progress-box').remove();
   
-  document.getElementById('section-edu').classList.add('hidden'); document.getElementById('section-area').classList.add('hidden'); document.getElementById('section-student-confirm').classList.add('hidden'); document.getElementById('section-vp').classList.add('hidden'); document.getElementById('section-gm').classList.add('hidden');
+  ['section-manager', 'section-edu', 'section-area', 'section-student-confirm', 'section-vp', 'section-gm'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.classList.add('hidden');
+  });
   document.getElementById('emp-id').value = ''; document.getElementById('id-tail').value = '';
   lockAllWorkflow(); renderMetrics();
 }
