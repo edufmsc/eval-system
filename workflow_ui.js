@@ -963,6 +963,13 @@ function onUnderlingChange() {
     isReadOnlyMode = false;
     window.managerScoresLocked = false;
 
+    // 被受評人員退回後，教育中心與區主管既有內容必須保留並顯示。
+    // 門市店主管只開放修改自己的六項分數、評語與簽名，
+    // 後續已完成內容一律維持唯讀。
+    renderCompletedLaterSections(
+      convertManagerCaseToForm(form)
+    );
+
     const managerComment = document.getElementById(
       "manager-comment"
     );
@@ -982,7 +989,8 @@ function onUnderlingChange() {
       form.currentStatus === UI_STATUS.MANAGER_RETURNED
     ) {
       showReadOnlyBanner(
-        `此表單目前為「${form.currentStatus}」，原評分、評語與簽名已保留，可修改後重新送出。`
+        `此表單目前為「${form.currentStatus}」，原評分、評語與簽名已保留，可修改後重新送出。`,
+        "editable"
       );
     } else {
       hideElement("readonly-banner");
@@ -1589,7 +1597,21 @@ function prepareCurrentRoleEdit(form) {
   // 門市店主管六項分數仍維持唯讀。
   window.managerScoresLocked = true;
 
-  hideElement("readonly-banner");
+  const returnedStatuses = [
+    UI_STATUS.EDU_RETURNED,
+    UI_STATUS.AREA_RETURNED,
+    UI_STATUS.VP_RETURNED
+  ];
+
+  if (returnedStatuses.includes(form.currentStatus)) {
+    showReadOnlyBanner(
+      `此表單目前為「${form.currentStatus}」，既有資料已保留；僅開放您所屬階段的欄位修改。`,
+      "editable"
+    );
+  } else {
+    hideElement("readonly-banner");
+  }
+
   showElement("btn-submit-main");
   updateSubmitButtonText();
 
@@ -1825,35 +1847,23 @@ function getSigHTML(title, signatureUrl, date) {
   const safeDate =
     date && date !== "-" ? date : "未記錄";
 
-  const imageUrl =
-    normalizeDriveImageUrl(signatureUrl);
-
-  if (imageUrl) {
-    return `
-      <div class="p-4 bg-orange-50/40 border border-orange-200 rounded-xl space-y-2">
-        <div class="text-sm font-black text-gray-800 flex items-center">
-          <i class="fa-solid fa-circle-check text-green-600 mr-1.5"></i>
-          ${escapeHtml(title)}已完成簽名（評核日期：${escapeHtml(safeDate)}）
-        </div>
-        <div class="bg-white border p-2 rounded-lg inline-block shadow-sm">
-          <img
-            src="${imageUrl}"
-            class="h-14 object-contain block"
-            alt="電子簽名"
-            onerror="this.style.display='none';this.parentElement.insertAdjacentHTML('beforeend','<span class=&quot;text-sm font-bold text-gray-600&quot;>簽名已留存</span>')"
-          >
-        </div>
-      </div>
-    `;
-  }
+  const hasSignature =
+    Boolean(String(signatureUrl || "").trim());
 
   return `
-    <div class="p-4 bg-gray-100 rounded-xl text-sm font-black text-gray-700 flex items-center">
-      <i class="fa-solid fa-circle-check text-green-600 mr-1.5"></i>
-      ${escapeHtml(title)}已完成簽名（評核日期：${escapeHtml(safeDate)}）
+    <div class="p-4 bg-orange-50/40 border border-orange-200 rounded-xl space-y-2">
+      <div class="text-sm font-black text-gray-800 flex items-center">
+        <i class="fa-solid fa-circle-check text-green-600 mr-1.5"></i>
+        ${escapeHtml(title)}已完成簽名（評核日期：${escapeHtml(safeDate)}）
+      </div>
+      <div class="inline-flex items-center bg-white border border-gray-200 px-4 py-2 rounded-lg shadow-sm text-sm font-bold text-gray-700">
+        <i class="fa-solid fa-signature text-orange-500 mr-2"></i>
+        ${hasSignature ? "簽名已留存" : "簽名紀錄未找到"}
+      </div>
     </div>
   `;
 }
+
 
 function normalizeDriveImageUrl(url) {
   const text = String(url || "").trim();
@@ -2409,9 +2419,52 @@ function manualRegeneratePDF() {
  * 小工具
  * ------------------------------------------------------------- */
 
-function showReadOnlyBanner(message) {
+function showReadOnlyBanner(message, mode = "readonly") {
+  const banner = document.getElementById(
+    "readonly-banner"
+  );
+
+  if (!banner) return;
+
   showElement("readonly-banner");
   setText("banner-text", message);
+
+  const subtitle = banner.querySelector(
+    "p.text-xs"
+  );
+
+  if (subtitle) {
+    subtitle.innerText =
+      mode === "editable"
+        ? "目前僅開放本階段可修改的欄位，其餘已完成內容維持唯讀。"
+        : "目前處於【唯讀查閱模式】，各項目皆已被安全鎖定保護。";
+  }
+
+  banner.classList.toggle(
+    "bg-amber-50",
+    mode !== "editable"
+  );
+  banner.classList.toggle(
+    "border-amber-300",
+    mode !== "editable"
+  );
+  banner.classList.toggle(
+    "text-amber-900",
+    mode !== "editable"
+  );
+
+  banner.classList.toggle(
+    "bg-orange-50",
+    mode === "editable"
+  );
+  banner.classList.toggle(
+    "border-orange-300",
+    mode === "editable"
+  );
+  banner.classList.toggle(
+    "text-orange-900",
+    mode === "editable"
+  );
 }
 
 function clearOtherSelects(activeType) {
