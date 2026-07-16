@@ -3,7 +3,7 @@
 // =================================================================
 
 const metrics = [
-  { id: 1, title: "責任感", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "責任感相當強,可以充分信賴,無須任何督促。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "可獨自負責,處事穩健,須偶爾督促。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "可以信賴,但須略加督促。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "處事被動,不積極,必須有人經常加以督促。" }] },
+  { id: 1, title: "責任感", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "責任感相當強,可以充分信賴,無須 any 督促。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "可獨自負責,處事穩健,須偶爾督促。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "可以信賴,但須略加督促。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "處事被動,不積極,必須有人經常加以督促。" }] },
   { id: 2, title: "協調性", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "能主動與人協調與上級員維持和諧關係,同事極願與其合作。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "能與人和諧相處,願接納他人意見而不固執,偶亦屬熱心助人。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "雖不特別致力於他人協調,但亦不與他人發生爭執與摩擦。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "缺乏協調與同事間偶爾會摩擦。" }] },
   { id: 3, title: "表達能力", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "文筆、言談、論理明確,能化繁為簡,密而不漏。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "表達有條理,使人易於了解。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "表達平平,大致可了解其意,不致引人誤解。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "文筆生硬言談欠明確不易讓人了解。" }] },
   { id: 4, title: "學習態度", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "針對突發狀況,能主動積極提出疑問虛心求救。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "能誠懇接受他人教導,但主動較弱。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "能誠懇接受他人教導,但主動較弱。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "不能主動學習,須加以督導。" }] },
@@ -25,7 +25,7 @@ function renderMetrics() {
 }
 
 function selectExactScore(event, metricId, score, min, max, force = false) {
-  if(event) event.stopPropagation(); if(isReadOnlyMode && !force) return; 
+  if(event) event.stopPropagation(); if(isReadOnlyMode && !force) return;
   const prevScore = selectedScores[metricId];
   if (prevScore) { const prevBtn = document.getElementById(`btn-score-${metricId}-${prevScore}`); if (prevBtn) prevBtn.className = "px-4 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-bold text-gray-700 hover:border-orange-500 transition"; }
   if (activeRanges[metricId]) { const prevKey = activeRanges[metricId]; const prevCard = document.getElementById(`range-card-${metricId}-${prevKey}`); if (prevCard) prevCard.className = "p-4 border border-gray-200 rounded-xl bg-white cursor-pointer"; const prevCheck = document.getElementById('check-icon-' + metricId + '-' + prevKey); if (prevCheck) prevCheck.classList.add('hidden'); }
@@ -85,6 +85,7 @@ function resetFormFields() {
   updateTotalScore();
 }
 
+// 🌟 完美落實需求三：加載教育中心控制介面時，同步調用全監控中心API，拉取全公司本月未結案單據，並自動依處別排序
 function reloadPendingList() {
   lockAllWorkflow(); document.getElementById('pending-form-select').value = '';
   callAPI("getPendingForms", { role: currentUser.role, dept: currentUser.dept, area: currentUser.area, empId: currentUser.empId }, function(list) {
@@ -94,44 +95,36 @@ function reloadPendingList() {
     if (list.length === 1) { select.value = "0"; onPendingFormChange(); }
     updateSubmitButtonText();
     
+    // 👑 管理者水晶球特許：只要是教育中心登入，直接憑空在前台加開「全公司流程進度追蹤庫（欄位二）」
     if (currentUser.role === "教育中心" && !document.getElementById('admin-progress-box')) {
       let reviewerBox = document.getElementById('reviewer-select-box');
       if (reviewerBox) {
         let adminBox = document.createElement('div'); adminBox.id = "admin-progress-box";
         adminBox.className = "bg-blue-50 p-4 rounded-xl border border-blue-200 mt-2 space-y-2";
         adminBox.innerHTML = `
-          <label class="block text-base font-black text-blue-700"><i class="fa-solid fa-eye mr-1"></i> 🔍 監控中心一（欄位二）：追蹤查閱全公司目前各關卡「進行中」進度：</label>
-          <select id="admin-stage-select" onchange="onAdminStageChange()" class="w-full p-2.5 border border-blue-400 rounded-xl font-bold text-sm bg-white cursor-pointer">
-            <option value="">-- 請選取欲追蹤監控的流程階段 --</option>
-            <option value="待區主管審核">監控：目前正卡在【待區主管審核】的考核單</option>
-            <option value="待學員確認">監控：目前正卡在【待學員確認】的考核單</option>
-            <option value="待營業副總核記">監控：目前正卡在【待營業副總核記】的考核單</option>
-            <option value="待總經理核定">監控：目前正卡在【待總經理核定】的考核單</option>
-            <option value="店長退回修改">監控：目前正卡在【店長端退回修改】的考核單</option>
-          </select>
-          <select id="admin-progress-form-select" onchange="onAdminProgressFormChange()" class="w-full p-2.5 border border-blue-300 rounded-xl font-bold text-sm bg-white cursor-pointer hidden"></select>
+          <label class="block text-base font-black text-blue-700"><i class="fa-solid fa-eye mr-1"></i> 🔍 監控中心一（欄位二）：追蹤查閱全公司本月所有「進行中/未結案」單據 (已自動依處別排序)：</label>
+          <select id="admin-progress-form-select" onchange="onAdminProgressFormChange()" class="w-full p-2.5 border border-blue-300 rounded-xl font-bold text-sm bg-white cursor-pointer"></select>
         `;
         reviewerBox.parentNode.insertBefore(adminBox, reviewerBox.nextSibling);
       }
     }
+    
+    // 🌟 完美實現需求三：主動去後台呼叫，並將進行中所有資料依照處別塞入監控選單
+    if (currentUser.role === "教育中心") {
+      callAPI("getAllInProgressForms", {}, function(inProgressList) {
+        window.adminProgressCache = inProgressList;
+        const progressSelect = document.getElementById('admin-progress-form-select');
+        if (progressSelect) {
+          progressSelect.innerHTML = `<option value="">-- 目前全公司共有 ${inProgressList.length} 筆進行中單據，除非結案否則永遠在此出現 (已依處別排序) --</option>`;
+          inProgressList.forEach((f, idx) => {
+            progressSelect.innerHTML += `<option value="${idx}">【${f.dept || '未分處別'}】${f.month} - ${f.store} - ${f.underlingName} (目前進度：${f.currentStatus})</option>`;
+          });
+        }
+      });
+    }
   });
 }
 
-function onAdminStageChange() {
-  const stage = document.getElementById('admin-stage-select').value;
-  const progressSelect = document.getElementById('admin-progress-form-select');
-  if(!stage) { progressSelect.classList.add('hidden'); return; }
-  
-  let mockRole = "區主管"; if(stage==="待學員確認") mockRole="學員"; if(stage==="待營業副總核記") mockRole="營業副總";
-  if(stage==="待總經理核定") mockRole="總經理"; if(stage==="店長退回修改") mockRole="店長";
-  showLoading(true);
-  callAPI("getPendingForms", { role: mockRole, dept: "", area: "", empId: "" }, function(list) {
-    showLoading(false); window.adminProgressCache = list;
-    progressSelect.innerHTML = `<option value="">-- 此關卡目前共有 ${list.length} 筆單據，請選取以最高權限查閱/指派 --</option>`;
-    list.forEach((f, idx) => { progressSelect.innerHTML += `<option value="${idx}">${f.month} - ${f.store} - 儲備幹部：${f.underlingName}</option>`; });
-    progressSelect.classList.remove('hidden');
-  });
-}
 function onAdminProgressFormChange() {
   const idx = document.getElementById('admin-progress-form-select').value; if(idx==="") return lockAllWorkflow();
   renderSingleFormToView(window.adminProgressCache[idx]);
@@ -147,7 +140,7 @@ function loadHistoryList() {
   });
 }
 
-// 🌟 完美落實需求二：如果該單已經完簽「結案」，就排除在店長評核名單外（不占用起單位置，直接去歷史頁簽）
+// 🌟 完美實現需求二：一旦該表單走到完簽「結案」，自動將其自店長起單選單中移除，避免占用與錯位！
 function loadUnderlings(store) {
   callAPI("getUnderlings", { store: store }, function(list) {
     subordinateCache = list; const select = document.getElementById('underling-select'); select.innerHTML = '<option value="">-- 請選擇店內學員 --</option>';
@@ -160,7 +153,6 @@ function loadUnderlings(store) {
   });
 }
 
-// 精準校正：將 max = range.max 語法錯誤修復為純參數傳遞，捍衛學員與各級長官歷史代出
 function highlightMetricScores(scoresArray) { 
   for(let i = 1; i <= 6; i++) { 
     let score = parseInt(scoresArray[i-1]); 
@@ -205,13 +197,30 @@ function onUnderlingChange() {
     }
     updateTotalScore();
   } else {
-    // 🌟 完美落實真空隔離：店長評核新幹部時，絕不殘留任何歷史資料
     isReadOnlyMode = false; window.loadedAdjustValue = 0; updateTotalScore();
   }
 }
 
 function onPendingFormChange() { resetFormFields(); const idx = document.getElementById('pending-form-select').value; if (idx !== "") renderSingleFormToView(pendingFormCache[idx]); }
 function onHistoryFormChange() { resetFormFields(); const idx = document.getElementById('history-form-select').value; if (idx !== "") renderSingleFormToView(historyFormCache[idx]); }
+
+// 🌟 完美落實需求一：手動重新產生 PDF 通道按鈕控制程式碼
+function manualRegeneratePDF() {
+  if (!window.currentFormRowIndex || parseInt(window.currentFormRowIndex) <= 0) {
+    return alert("📢 請先從上方選定您想要重新生成 PDF 的單據公文物件！");
+  }
+  if (confirm("確定要針對當前選定的這筆單據手動『重新產生1:1歸檔PDF電子簽核報表』嗎？\n系統將自動套用最新簽章與評語，並寫入獨立結案檔案庫！")) {
+    showLoading(true);
+    callAPI("regeneratePDF", { rowIndex: window.currentFormRowIndex }, function(res) {
+      showLoading(false);
+      if (res.success) {
+        alert("🏆 " + res.message);
+      } else {
+        alert("❌ 重製失敗，原因：" + res.message);
+      }
+    });
+  }
+}
 
 function renderSingleFormToView(f) {
   isReadOnlyMode = false; window.currentFormRowIndex = f.rowIndex;
