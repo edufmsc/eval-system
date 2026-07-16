@@ -2,7 +2,7 @@
 // 前端模組 2：萬能親筆手寫板與預存簽章自動自動化調出外掛
 // =================================================================
 
-// 喚醒手寫畫布事件監聽
+// 喚醒手寫畫布事件監聽 (支援滑鼠與平板觸控)
 function initCanvasDevice(id) {
   if (canvasMap[id]) return;
   let cvs = document.getElementById(id); if(!cvs) return;
@@ -32,7 +32,7 @@ function clearSig(id) {
   if(canvasMap[id]) canvasMap[id].ctx.clearRect(0, 0, canvasMap[id].cvs.width, canvasMap[id].cvs.height); 
 }
 
-// 預存簽名切換控制盒：打勾時隱藏畫布，取消時強制展開並喚醒畫布事件
+// 預存簽名切換控制盒：打勾時隱藏畫布，取消時強制展開並喚醒畫布事件 (問題4)
 function toggleSignatureType(canvasId, chkId) {
   const chk = document.getElementById(chkId); if(!chk) return;
   const wrapper = document.getElementById('canvas-wrapper-' + canvasId);
