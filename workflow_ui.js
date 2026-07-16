@@ -2,7 +2,6 @@
 // 前端模組 4：UI 打分渲染、實時總分看板運算、接力流轉與資料真空洗白引擎
 // =================================================================
 
-// 🔒 1. 頂層極速網頁防護：如果瀏覽器存有 Session，在 Body 渲染前強制注入 CSS 鎖死登入框，100% 防止 F5 刷新閃現
 (function() {
   if (localStorage.getItem('hsz_eval_session')) {
     const style = document.createElement('style');
@@ -15,7 +14,7 @@
 const metrics = [
   { id: 1, title: "責任感", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "責任感相當強,可以充分信賴,無須任何督促。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "可獨自負責,處事穩健,須偶爾督促。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "可以信賴,但須略加督促。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "處事被動,不積極,必須有人經常加以督促。" }] },
   { id: 2, title: "協調性", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "能主動與人協調與上級員維持和諧關係,同事極願與其合作。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "能與人和諧相處,願接納他人意見而不固執,偶亦屬熱心助人。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "雖不特別致力於他人協調,但亦不與他人發生爭執與摩擦。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "缺乏協調與同事間偶爾會摩擦。" }] },
-  { id: 3, title: "表達能力", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "文筆、言談、論理明確,能化繁為簡,密而不漏。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "表達有條理,使人易於了解。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "表達平平,大致可了解其意,不致引人誤解。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "文筆生硬言談欠明確不易讓人了解。" }] },
+  { id: 3, title: "表達能力", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "文筆、言談、論理明確,能化繁為簡,密而不漏。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "表達有條理,使人易於了解。" }, { ...text: "表達平平,大致可了解其意,不致引人誤解。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "文筆生硬言談欠明確不易讓人了解。" }] },
   { id: 4, title: "學習態度", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "針對突發狀況,能主動積極提出疑問虛心求救。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "能誠懇接受他人教導,但主動較弱。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "能誠懇接受他人教導,但主動較弱。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "不能主動學習,須加以督導。" }] },
   { id: 5, title: "解決問題能力", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "針對可能發生之問題,極求解,並予以解決。能迅速謀求改善對策,需督促即可完成。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "具有解決問題之能力,但須督促完成。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "能謀求改善之道,但無擔當之魄力。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "無法迅速謀求改善對策,並有逃避之現象。" }] },
   { id: 6, title: "個人儀容", ranges: [{ label: "8 ~ 10 分", min: 8, max: 10, text: "整齊清潔,端正足為模範。" }, { label: "6 ~ 7 分", min: 6, max: 7, text: "重視清潔衛生。" }, { label: "3 ~ 5 分", min: 3, max: 5, text: "達到基本要求。" }, { label: "1 ~ 2 分", min: 1, max: 2, text: "我行我素,須經常糾正才會改進。" }] }
@@ -48,6 +47,7 @@ function selectExactScore(event, metricId, score, min, max, force = false) {
 }
 function clickRangeCard(metricId, min, max) { selectExactScore(null, metricId, max, min, max); }
 
+// 🌟 完美實現需求一：整合 100 分天花板上限，不論加減分，大看板絕對卡死 100 分上限
 function updateTotalScore() {
   let mgrTotal = 0; for (let i = 1; i <= 6; i++) { if (selectedScores[i]) mgrTotal += parseInt(selectedScores[i]); }
   let edu1 = parseFloat(document.getElementById('edu-score1')?.value) || 0;
@@ -61,7 +61,11 @@ function updateTotalScore() {
   
   document.getElementById('sum-mgr').innerText = mgrTotal; document.getElementById('sum-grand-edu').innerText = eduTotal;
   document.getElementById('sum-adjust').innerText = (adjustVal >= 0 ? '+' : '') + adjustVal;
-  document.getElementById('sum-grand').innerText = (mgrTotal + eduTotal + adjustVal);
+  
+  var grandSum = mgrTotal + eduTotal + adjustVal;
+  if (grandSum > 100) grandSum = 100;
+  if (grandSum < 0) grandSum = 0;
+  document.getElementById('sum-grand').innerText = grandSum;
 }
 
 function resetFormFields() {
@@ -95,34 +99,45 @@ function resetFormFields() {
   updateTotalScore();
 }
 
+// 🌟 完美實現需求三：同時為教育中心與「區主管」全面開啟進行中單據大追蹤（區主管只看所屬轄區）
 function reloadPendingList() {
   lockAllWorkflow(); document.getElementById('pending-form-select').value = '';
   callAPI("getPendingForms", { role: currentUser.role, dept: currentUser.dept, area: currentUser.area, empId: currentUser.empId }, function(list) {
     pendingFormCache = list; const select = document.getElementById('pending-form-select');
     select.innerHTML = `<option value="">-- 您目前有 ${list.length} 筆『由我填寫認證』的待辦單據（欄位一） --</option>`;
     list.forEach((f, idx) => { select.innerHTML += `<option value="${idx}">${f.month} 待處理認證：${f.underlingName}</option>`; });
-    if (list.length === 1 && currentUser.role !== "教育中心") { select.value = "0"; onPendingFormChange(); }
+    if (list.length === 1 && currentUser.role !== "教育中心" && currentUser.role !== "區主管") { select.value = "0"; onPendingFormChange(); }
     updateSubmitButtonText();
     
-    if (currentUser.role === "教育中心" && !document.getElementById('admin-progress-box')) {
+    // 加開監控外框
+    if ((currentUser.role === "教育中心" || currentUser.role === "區主管") && !document.getElementById('admin-progress-box')) {
       let reviewerBox = document.getElementById('reviewer-select-box');
       if (reviewerBox) {
         let adminBox = document.createElement('div'); adminBox.id = "admin-progress-box";
         adminBox.className = "bg-blue-50 p-4 rounded-xl border border-blue-200 mt-2 space-y-2";
+        
+        let labelText = currentUser.role === "教育中心" ? 
+          `<i class="fa-solid fa-eye mr-1"></i> 🔍 監控中心一（欄位二）：追蹤查閱全公司本月所有「進行中/未結案」單據 (已自動依處別排序)：` :
+          `<i class="fa-solid fa-eye mr-1"></i> 🔍 轄區監控中心（欄位二）：追蹤查閱您轄區內本月所有「進行中/未結案」單據 (已自動依處別排序)：`;
+          
         adminBox.innerHTML = `
-          <label class="block text-base font-black text-blue-700"><i class="fa-solid fa-eye mr-1"></i> 🔍 監控中心一（欄位二）：追蹤查閱全公司本月所有「進行中/未結案」單據 (已自動依處別排序)：</label>
+          <label class="block text-base font-black text-blue-700">${labelText}</label>
           <select id="admin-progress-form-select" onchange="onAdminProgressFormChange()" class="w-full p-2.5 border border-blue-300 rounded-xl font-bold text-sm bg-white cursor-pointer"></select>
         `;
         reviewerBox.parentNode.insertBefore(adminBox, reviewerBox.nextSibling);
       }
     }
     
-    if (currentUser.role === "教育中心") {
-      callAPI("getAllInProgressForms", {}, function(inProgressList) {
+    // 呼叫 API 進行依處別排序的名單載入
+    if (currentUser.role === "教育中心" || currentUser.role === "區主管") {
+      callAPI("getAllInProgressForms", { role: currentUser.role, area: currentUser.area }, function(inProgressList) {
         window.adminProgressCache = inProgressList;
         const progressSelect = document.getElementById('admin-progress-form-select');
         if (progressSelect) {
-          progressSelect.innerHTML = `<option value="">-- 目前全公司共有 ${inProgressList.length} 筆進行中單據，除非結案否則永遠在此出現 (已依處別排序) --</option>`;
+          let optText = currentUser.role === "教育中心" ? 
+            `-- 目前全公司共有 ${inProgressList.length} 筆進行中單據，除非結案否則永遠在此出現 (已依處別排序) --` :
+            `-- 目前您轄區內共有 ${inProgressList.length} 筆進行中單據，除非結案否則永遠在此出現 (已依處別排序) --`;
+          progressSelect.innerHTML = `<option value="">${optText}</option>`;
           inProgressList.forEach((f, idx) => {
             progressSelect.innerHTML += `<option value="${idx}">【${f.dept || '未分處別'}】${f.month} - ${f.store} - ${f.underlingName} (目前進度：${f.currentStatus})</option>`;
           });
@@ -132,7 +147,6 @@ function reloadPendingList() {
   });
 }
 
-// 🌟 核心防護修復：上帝視角三大下拉選單「真空互斥清洗防線」，徹底杜絕行數錯軌
 function onPendingFormChange() { 
   const select = document.getElementById('pending-form-select'); if (select.value === "") return lockAllWorkflow();
   const hSel = document.getElementById('history-form-select'); if(hSel) hSel.value = "";
@@ -145,7 +159,7 @@ function onAdminProgressFormChange() {
   const pSel = document.getElementById('pending-form-select'); if(pSel) pSel.value = "";
   const hSel = document.getElementById('history-form-select'); if(hSel) hSel.value = "";
   renderSingleFormToView(window.adminProgressCache[select.value]);
-  document.getElementById('admin-control-box').classList.remove('hidden'); 
+  if(currentUser.role === "教育中心") document.getElementById('admin-control-box').classList.remove('hidden'); 
 }
 
 function onHistoryFormChange() {
@@ -169,21 +183,14 @@ function loadHistoryList() {
 function loadUnderlings(store) {
   callAPI("getUnderlings", { store: store }, function(list) {
     subordinateCache = list; const select = document.getElementById('underling-select'); select.innerHTML = '<option value="">-- 請選擇店內學員 --</option>';
-    list.forEach(u => { 
-      if (u.currentStatus === "結案") return; 
-      let tag = u.alreadyEval ? ` [本月已起單 - ${u.currentStatus}]` : ''; 
-      select.innerHTML += `<option value="${u.empId}">${u.name} (${u.empId})${tag}</option>`; 
-    });
+    list.forEach(u => { if (u.currentStatus === "結案") return; let tag = u.alreadyEval ? ` [本月已起單 - ${u.currentStatus}]` : ''; select.innerHTML += `<option value="${u.empId}">${u.name} (${u.empId})${tag}</option>`; });
     updateSubmitButtonText();
   });
 }
 
-// 🌟 核心防護修復：徹底修復 max = range.max 的語法死碼錯誤
 function highlightMetricScores(scoresArray) { 
   for(let i = 1; i <= 6; i++) { 
-    let score = parseInt(scoresArray[i-1]); 
-    let metric = metrics.find(m => m.id === i); 
-    let range = metric.ranges.find(r => score >= r.min && score <= r.max); 
+    let score = parseInt(scoresArray[i-1]); let metric = metrics.find(m => m.id === i); let range = metric.ranges.find(r => score >= r.min && score <= r.max); 
     if (range) selectExactScore(null, i, score, range.min, range.max, true); 
   } 
 }
@@ -223,7 +230,6 @@ function onUnderlingChange() {
     }
     updateTotalScore();
   } else {
-    // 🌟 核心防護修復：清除失效的殘缺死碼 .add; 確保標準隱顯防護
     isReadOnlyMode = false; document.getElementById('readonly-banner').classList.add('hidden');
     document.getElementById('btn-submit-main').classList.remove('hidden');
     window.loadedAdjustValue = 0; updateTotalScore();
@@ -231,10 +237,8 @@ function onUnderlingChange() {
 }
 
 function manualRegeneratePDF() {
-  if (!window.currentFormRowIndex || parseInt(window.currentFormRowIndex) <= 0) {
-    return alert("📢 請先從上方選定您想要重新生成 PDF 的單據公文物件！");
-  }
-  if (confirm("確定要針對當前選定的這筆單據手動『重新產生1:1歸檔PDF電子簽核報表』嗎？\n系統將自動套用最新簽章與評語，並寫入獨立結案檔案庫！")) {
+  if (!window.currentFormRowIndex || parseInt(window.currentFormRowIndex) <= 0) { return alert("📢 請先從上方選定您想要重新生成 PDF 的單據公文物件！"); }
+  if (confirm("確定要手動『重新產生1:1歸檔PDF電子簽核報表』嗎？")) {
     showLoading(true);
     callAPI("regeneratePDF", { rowIndex: window.currentFormRowIndex }, function(res) {
       showLoading(false); if (res.success) { alert("🏆 " + res.message); } else { alert("❌ 重製失敗，原因：" + res.message); }
@@ -310,7 +314,6 @@ function showEduSectionReadOnly(f, date) {
   document.getElementById('sig-block-edu').innerHTML = `<div class="p-3 bg-gray-100 rounded-xl text-sm font-black text-gray-700"><i class="fa-solid fa-circle-check text-green-600 mr-1"></i> 【教育中心】已核章完成 (核章日期：${date})</div>`;
 }
 
-// showAreaSectionReadOnly 等後續既有函式原封不動安全保留...
 function showAreaSectionReadOnly(cleanComment, adjustVal, date) {
   document.getElementById('section-area').classList.remove('hidden'); document.getElementById('area-adjust-score').value = adjustVal;
   document.getElementById('area-adjust-score').disabled = true; document.getElementById('area-comment').value = cleanComment;
@@ -329,10 +332,8 @@ function executeForceReset() {
   if (pendingIdx !== "" && pendingIdx !== undefined) f = pendingFormCache[pendingIdx];
   else if (historyIdx !== "" && historyIdx !== undefined) f = historyFormCache[historyIdx];
   else if (adminIdx !== "" && adminIdx !== undefined) f = window.adminProgressCache[adminIdx];
-  
   if (!f) return alert("📢 請先選定欲手動流轉控管的單據物件！");
   const targetStatus = document.getElementById('force-reset-select').value; if(!targetStatus) return alert("請選取欲手動流轉的目標流程進度！");
-  
   if(confirm(`最高控管：確定強制流轉狀態為【${targetStatus}】？`)) {
     showLoading(true);
     callAPI("forceResetStage", { rowIndex: f.rowIndex, targetStatus: targetStatus, empId: currentUser.empId }, function(res) {
@@ -349,10 +350,9 @@ function rejectForm() {
     reason = prompt("⚠️ 儲備幹部您好，請填寫您對考核內容有疑慮之原因（本單將一鍵直接跨級退回給分店店長重新跑流程）：");
     if (!reason || reason.trim() === "") return alert("學員反映考核疑慮『必須填寫具體原因』！操作已安全拒絕。");
   } else { if(!confirm("確定要將本月考核單據退回修改嗎？")) return; }
-  
   showLoading(true);
   callAPI("submitStage", { role: role, formData: { rowIndex: window.currentFormRowIndex, isReject: true, rejectReason: reason ? reason.trim() : "" } }, function(res) {
-    showLoading(false); if(res.success) { alert("🚫 " + res.message); reloadPendingList(); } else { alert("❌ 操作失敗 Rhine：" + res.message); }
+    showLoading(false); if(res.success) { alert("🚫 " + res.message); reloadPendingList(); } else { alert("❌ 操作失敗：" + res.message); }
   });
 }
 
@@ -360,7 +360,6 @@ function submitForm() {
   const role = currentUser.role; let payload = {};
   const chkMap = { "店長": "use-saved-sig", "教育中心": "use-saved-sig-edu", "區主管": "use-saved-sig-area", "學員": "use-saved-sig-student", "營業副總": "use-saved-sig-vp", "總經理": "use-saved-sig-gm" };
   const cvsMapId = { "店長": "signature-canvas", "教育中心": "signature-canvas-edu", "區主管": "signature-canvas-area", "學員": "signature-canvas-student", "營業副總": "signature-canvas-vp", "總經理": "signature-canvas-gm" };
-  
   let useSavedSig = document.getElementById(chkMap[role]) ? document.getElementById(chkMap[role]).checked : false;
   let targetCvs = cvsMapId[role];
   if (!useSavedSig && isCanvasBlank(targetCvs)) return alert("請完成本關章節手寫簽名，或勾選使用預存簽名！");
