@@ -134,6 +134,38 @@
                   </button>
                 </div>
               </div>
+
+              <div id="reopen-closed-container" class="hidden border-t-2 border-violet-200 pt-5 space-y-4">
+                <div class="flex items-start gap-3">
+                  <i class="fa-solid fa-copy text-violet-600 text-2xl mt-0.5"></i>
+                  <div>
+                    <p class="text-base font-black text-violet-800">結案案件重新開啟為下一版本</p>
+                    <p class="text-sm font-bold text-violet-700 mt-1">原始結案資料與PDF完全保留；新版本將建立為 R1、R2……並從門市店主管重新填寫。</p>
+                  </div>
+                </div>
+
+                <div id="reopen-source-summary" class="bg-white border border-violet-200 rounded-xl p-3 text-sm font-bold text-gray-700">
+                  請從歷史考核表選擇一筆已結案案件。
+                </div>
+
+                <div>
+                  <label class="block text-sm font-black text-violet-800 mb-1">重新開啟原因（必填）</label>
+                  <textarea id="reopen-reason" class="w-full p-3 border-2 border-violet-300 rounded-xl text-base h-24 resize-none bg-white" placeholder="請具體說明為何需要重新啟動此案件……"></textarea>
+                </div>
+
+                <div id="reopen-closed-warning" class="bg-violet-50 border border-violet-200 rounded-xl p-3 text-sm font-bold text-violet-800">
+                  新版本的分數、評語與簽名將全部從空白開始；原版本不會被修改。
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3">
+                  <button type="button" id="btn-reopen-closed" onclick="executeReopenClosedEvaluation()" class="flex-1 bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 py-3 rounded-xl text-base shadow transition">
+                    <i class="fa-solid fa-copy mr-1"></i>建立下一版本副本
+                  </button>
+                  <button type="button" onclick="toggleAdminManagementMode(false)" class="sm:w-48 bg-gray-600 hover:bg-gray-700 text-white font-bold px-6 py-3 rounded-xl text-base shadow transition">
+                    離開管理模式
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
