@@ -7,7 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   
-  <!-- 🌟 零延遲極速阻斷抗閃現防線：在 Body 渲染前，直接在網頁頭部阻斷登入框顯示 -->
   <script>
     if (localStorage.getItem('hsz_eval_session')) {
       document.documentElement.classList.add('hsz-logged-in');
@@ -20,14 +19,12 @@
     .brand-border { border-color: #E05315; }
     .touch-none { touch-action: none; }
     
-    /* 配合抗閃現防線之極速 CSS 隱顯硬核鎖 */
     .hsz-logged-in #login-container { display: none !important; }
     .hsz-logged-in #app-container { display: block !important; }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans w-full overflow-x-hidden flex flex-col items-center justify-center">
 
-  <!-- 1. 登入畫面 -->
   <div id="login-container" class="flex flex-col items-center justify-center min-h-screen w-full px-4">
     <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-8 brand-border">
       <div class="text-center mb-6">
@@ -60,7 +57,6 @@
     </div>
   </div>
 
-  <!-- 2. 主表單畫面 -->
   <div id="app-container" class="hidden pb-12 w-full">
     <header class="brand-bg text-white py-4 px-6 shadow-md flex justify-between items-center sticky top-0 z-50 w-full">
       <div>
@@ -76,7 +72,6 @@
     <div class="w-full max-w-6xl mx-auto px-6 mt-8">
       <div class="bg-white rounded-2xl shadow-md p-8 space-y-6">
         
-        <!-- 下拉選擇與歷史分流調閱區 -->
         <div class="grid grid-cols-1 gap-4">
           <div id="store-select-box" class="hidden">
             <label class="block text-base font-black text-gray-700 mb-2"><i class="fa-solid fa-user-check brand-text mr-1"></i> 請選擇店內受評儲備幹部：</label>
@@ -88,7 +83,6 @@
             <select id="pending-form-select" onchange="onPendingFormChange()" class="w-full p-3 border-2 border-orange-500 rounded-xl focus:outline-none text-lg font-bold bg-orange-50 cursor-pointer"></select>
           </div>
 
-          <!-- ⚙️ 教育中心流程總控中心 (管理員最高特許權限) -->
           <div id="admin-control-box" class="hidden bg-red-50 p-5 rounded-2xl border-2 border-red-200 space-y-3">
             <label class="block text-base font-black text-red-700 flex items-center gap-1"><i class="fa-solid fa-sliders text-xl"></i> ⚙️ 教育中心流程總控中心 (管理員最高特許權限)：</label>
             <div class="flex flex-col sm:flex-row gap-3">
@@ -103,25 +97,21 @@
               </select>
               <button onclick="executeForceReset()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 rounded-xl text-base shadow transition"><i class="fa-solid fa-bolt mr-1"></i>執行強制流轉</button>
               
-              <!-- 手動重新產生 PDF 按鈕 -->
               <button onclick="manualRegeneratePDF()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl text-base shadow transition"><i class="fa-solid fa-file-pdf mr-1"></i>手動重新產生PDF</button>
             </div>
           </div>
 
-          <!-- 📥 歷史考核表封存調閱專區 -->
           <div id="history-select-box" class="hidden bg-gray-50 p-4 rounded-xl border border-gray-200">
             <label class="block text-base font-black text-slate-700 mb-2"><i class="fa-solid fa-box-archive text-slate-500 mr-1"></i> 📥 歷史考核表封存調閱區 (結案單據)：</label>
             <select id="history-form-select" onchange="onHistoryFormChange()" class="w-full p-3 border-2 border-gray-300 rounded-xl focus:outline-none text-base font-bold bg-white cursor-pointer"></select>
           </div>
         </div>
 
-        <!-- 🔒 唯讀查閱提示條 -->
         <div id="readonly-banner" class="hidden p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl text-amber-900 font-bold flex items-center gap-3">
           <i class="fa-solid fa-circle-info text-2xl text-amber-500 animate-pulse"></i>
           <div><p class="text-base" id="banner-text">📢 本月已完成考核起單！</p><p class="text-xs text-amber-700 font-medium mt-0.5">目前處於【唯讀查閱模式】，各項目皆已被安全鎖定保護。</p></div>
         </div>
 
-        <!-- 基本資料卡片 -->
         <div id="info-card-container" class="hidden bg-orange-50 border-2 border-orange-200 rounded-xl p-5 text-base space-y-2">
           <div class="grid grid-cols-2 gap-4">
             <div><span class="font-bold text-gray-500">受評姓名：</span><span id="info-name" class="font-black text-gray-800">-</span></div>
@@ -133,7 +123,6 @@
           </div>
         </div>
 
-        <!-- 📊 總分即時計算看板 -->
         <div id="score-summary-card" class="hidden bg-slate-900 text-white rounded-2xl p-6 shadow-lg border-2 border-slate-700 space-y-4">
           <h3 class="text-base font-black border-b border-slate-700 pb-2 flex items-center gap-2"><i class="fa-solid fa-calculator text-orange-400"></i> 考核總得分即時運算</h3>
           <div class="grid grid-cols-4 gap-4 text-center">
@@ -144,9 +133,7 @@
           </div>
         </div>
 
-        <!-- 總流程大盒子 -->
         <div id="workflow-box" class="hidden space-y-8">
-          <!-- 關卡【一】：店長考核指標 (60%) -->
           <div id="section-manager" class="space-y-4">
             <hr class="border-dashed border-gray-300">
             <h3 class="text-lg font-black text-gray-800 border-l-4 brand-border pl-3">第一關：訓練單位主管填寫 (每項 10%，共 60%)</h3>
@@ -159,7 +146,6 @@
             </div>
           </div>
 
-          <!-- 關卡【二】：教育中心成果認證 (40%) -->
           <div id="section-edu" class="hidden space-y-4 bg-orange-50/30 p-6 rounded-2xl border border-orange-100">
             <hr class="border-dashed border-gray-300">
             <h3 class="text-lg font-black text-gray-800 border-l-4 border-amber-500 pl-3">第二關：教育中心考核填寫 (學習成果階段，共 40%)</h3>
@@ -170,7 +156,6 @@
               <div><label class="block text-sm font-bold text-gray-700 mb-1">培訓課程狀況 (10%)</label><input type="number" id="edu-score4" onkeyup="updateTotalScore()" class="w-full p-2.5 border border-gray-300 rounded-xl text-base" placeholder="實得分"></div>
             </div>
 
-            <!-- 職能積分累計、OJT完成進度 數據依據格 -->
             <div class="grid grid-cols-2 gap-4 mt-2" id="edu-data-依据組件">
               <div>
                 <label class="block text-sm font-bold text-amber-800 mb-1"><i class="fa-solid fa-calculator mr-1"></i> 職能積分累計實際總分數</label>
@@ -193,7 +178,6 @@
             </div>
           </div>
 
-          <!-- 關卡【三】：區主管審核 -->
           <div id="section-area" class="hidden space-y-4 bg-sky-50/30 p-6 rounded-2xl border border-sky-100">
             <hr class="border-dashed border-gray-300">
             <h3 class="text-lg font-black text-sky-900 border-l-4 border-sky-500 pl-3">第三關：區主管考評審核</h3>
@@ -211,10 +195,9 @@
             </div>
           </div>
 
-          <!-- 關卡【四】：學員確認章 -->
           <div id="section-student-confirm" class="hidden space-y-4 bg-amber-50/30 p-6 rounded-2xl border border-amber-200">
             <hr class="border-dashed border-gray-300">
-            <h3 class="text-lg font-black text-amber-900 border-l-4 border-amber-500 pl-3">第四關：儲備幹部學員本尊簽章確認</h3>
+            <h3 class="text-lg font-black border-l-4 border-amber-500 pl-3">第四關：儲備幹部學員本尊簽章確認</h3>
             <p class="text-sm font-medium text-amber-700">請確認上方各級主管之月度考評內容。確認無誤後請於下方完成核章。</p>
             <div id="sig-block-student" class="bg-white p-4 rounded-xl border border-gray-200 space-y-2">
               <label class="block text-sm font-bold text-gray-700">學員親筆簽章：</label>
@@ -223,7 +206,6 @@
             </div>
           </div>
 
-          <!-- 關卡【五】：營業副總核記 -->
           <div id="section-vp" class="hidden space-y-4 bg-teal-50/20 p-6 rounded-2xl border border-teal-100">
             <hr class="border-dashed border-gray-300">
             <h3 class="text-lg font-black text-gray-800 border-l-4 border-teal-600 pl-3">第五關：營業副總簽核審查</h3>
@@ -235,7 +217,6 @@
             </div>
           </div>
 
-          <!-- 關卡【六】：總經理核定 -->
           <div id="section-gm" class="hidden space-y-4 bg-purple-50/20 p-6 rounded-2xl border border-purple-100">
             <hr class="border-dashed border-gray-300">
             <h3 class="text-lg font-black text-purple-900 border-l-4 border-purple-700 pl-3">👑 第六關：總經理最高裁決核定</h3>
