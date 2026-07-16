@@ -38,7 +38,6 @@ function selectExactScore(event, metricId, score, min, max, force = false) {
 }
 function clickRangeCard(metricId, min, max) { selectExactScore(null, metricId, max, min, max); }
 
-// 🌟 解決問題 3：全角色動態實時總分加總防線 (店鋪 + 教育中心 + 區主管微調)
 function updateTotalScore() {
   let mgrTotal = 0; for (let i = 1; i <= 6; i++) { if (selectedScores[i]) mgrTotal += parseInt(selectedScores[i]); }
   let edu1 = parseFloat(document.getElementById('edu-score1').value) || 0;
@@ -73,6 +72,46 @@ function resetFormFields() {
   document.getElementById('sig-block-gm').innerHTML = `<label class="block text-sm font-bold text-gray-700">總經理最高核定簽章：</label><div id="saved-sig-box-gm" class="hidden mb-2"><label class="inline-flex items-center cursor-pointer py-1"><input type="checkbox" id="use-saved-sig-gm" onchange="toggleSignatureType('signature-canvas-gm', 'use-saved-sig-gm')" class="w-5 h-5 rounded text-orange-600 border-gray-300"><span class="ml-2 text-sm font-bold text-gray-700">使用系統預存簽名確認</span></label></div><div id="canvas-wrapper-signature-canvas-gm" class="relative bg-white border-2 border-gray-300 rounded-xl overflow-hidden h-44 w-full"><canvas id="signature-canvas-gm" width="1000" height="250" class="w-full h-full block bg-white cursor-crosshair"></canvas><button type="button" onclick="clearSig('signature-canvas-gm')" class="absolute bottom-2 right-2 px-3 py-1 bg-gray-200 text-gray-700 text-xs font-bold rounded-lg">清除</button></div>`;
   canvasMap = {}; window.loadedAdjustValue = undefined; updateTotalScore();
 }
+
+// 🌟 補回缺失函式 1：待處理簽核表單調取過濾
+function reloadPendingList() {
+  lockAllWorkflow(); document.getElementById('pending-form-select').value = '';
+  callAPI("getPendingForms", { role: currentUser.role, dept: currentUser.dept, area: currentUser.area, empId: currentUser.empId }, function(list) {
+    pendingFormCache = list; const select = document.getElementById('pending-form-select');
+    select.innerHTML = `<option value="">-- 您目前有 ${list.length} 筆待辦單據，請選擇 --</option>`;
+    list.forEach((f, idx) => { select.innerHTML += `<option value="${idx}">${f.month} 待處理：${f.underlingName}</option>`; });
+    if (list.length === 1) { select.value = "0"; onPendingFormChange(); }
+    updateSubmitButtonText();
+  });
+}
+
+// 🌟 補回缺失函式 2：歷史已結案考核表選單加載
+function loadHistoryList() {
+  if(!currentUser) return;
+  callAPI("getHistoryForms", { role: currentUser.role, dept: currentUser.dept, area: currentUser.area, empId: currentUser.empId, store: currentUser.store }, function(list) {
+    historyFormCache = list; const box = document.getElementById('history-select-box'); const select = document.getElementById('history-form-select');
+    if (list && list.length > 0) {
+      box.classList.remove('hidden');
+      select.innerHTML = `<option value="">-- 📥 目前封存庫共有 ${list.length} 筆已結案歷史考核表 --</option>`;
+      list.forEach((f, idx) => { select.innerHTML += `<option value="${idx}">【${f.month} 已結案封存】 儲備幹部：${f.underlingName} (${f.store})</option>`; });
+    } else { box.classList.add('hidden'); }
+  });
+}
+
+// 🌟 補回缺失函式 3：店長拉取轄下同仁名單
+function loadUnderlings(store) {
+  callAPI("getUnderlings", { store: store }, function(list) {
+    subordinateCache = list; const select = document.getElementById('underling-select');
+    select.innerHTML = '<option value="">-- 請選擇店內學員 --</option>';
+    list.forEach(u => {
+      let tag = u.alreadyEval ? ` [本月已起單 - ${u.currentStatus}]` : '';
+      select.innerHTML += `<option value="${u.empId}">${u.name} (${u.empId})${tag}</option>`;
+    });
+    updateSubmitButtonText();
+  });
+}
+
+function highlightMetricScores(scoresArray) { for(let i = 1; i <= 6; i++) { let score = parseInt(scoresArray[i-1]); let metric = metrics.find(m => m.id === i); let range = metric.ranges.find(r => score >= r.min && score <= r.max); if (range) selectExactScore(null, i, score, range.min, range.max, true); } }
 
 function onUnderlingChange() {
   resetFormFields(); const selectedId = document.getElementById('underling-select').value; if (!selectedId) return lockAllWorkflow();
@@ -186,7 +225,6 @@ function renderSingleFormToView(f) {
     document.getElementById('section-gm').classList.remove('hidden'); toggleSignatureType('signature-canvas-gm', 'use-saved-sig-gm');
   }
 
-  // 🌟 問題7：智慧配置有疑慮按鈕名稱
   if (role !== "店長") {
     const rejectBtn = document.getElementById('btn-reject-main'); rejectBtn.classList.remove('hidden');
     if (role === "學員") rejectBtn.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i>考核內容有疑慮，退回店長重新起單`;
@@ -221,7 +259,6 @@ function updateSubmitButtonText() {
   if(textMap[currentUser.role]) btn.innerText = textMap[currentUser.role];
 }
 
-// ⚙️ 問題6：教育中心最高總控調關代碼
 function executeForceReset() {
   const selIdx = document.getElementById('pending-form-select').value; if (selIdx === "") return alert("請先選定欲手動控管的待辦單據！");
   const targetStatus = document.getElementById('force-reset-select').value; if(!targetStatus) return alert("請選取欲手動調跳關的目標流程進度！");
@@ -237,7 +274,6 @@ function executeForceReset() {
   }
 }
 
-// 🚫 問題7：學員反映考核疑慮一鍵直退第一關店長修改
 function rejectForm() {
   if (!currentUser) return; const role = currentUser.role; let reason = "";
   if (role === "學員") {
