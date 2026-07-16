@@ -38,7 +38,7 @@ function selectExactScore(event, metricId, score, min, max, force = false) {
 }
 function clickRangeCard(metricId, min, max) { selectExactScore(null, metricId, max, min, max); }
 
-// 🌟 解決問題 3：全角色動態實時總分加總防線
+// 🌟 解決問題 3：全角色動態實時總分加總防線 (店鋪 + 教育中心 + 區主管微調)
 function updateTotalScore() {
   let mgrTotal = 0; for (let i = 1; i <= 6; i++) { if (selectedScores[i]) mgrTotal += parseInt(selectedScores[i]); }
   let edu1 = parseFloat(document.getElementById('edu-score1').value) || 0;
@@ -186,6 +186,7 @@ function renderSingleFormToView(f) {
     document.getElementById('section-gm').classList.remove('hidden'); toggleSignatureType('signature-canvas-gm', 'use-saved-sig-gm');
   }
 
+  // 🌟 問題7：智慧配置有疑慮按鈕名稱
   if (role !== "店長") {
     const rejectBtn = document.getElementById('btn-reject-main'); rejectBtn.classList.remove('hidden');
     if (role === "學員") rejectBtn.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i>考核內容有疑慮，退回店長重新起單`;
@@ -194,7 +195,6 @@ function renderSingleFormToView(f) {
   updateTotalScore();
 }
 
-// 🌟 解決問題 3：教育訓練關卡解壓抽取「累計分數」與「OJT篇數」並進行灰色唯讀渲染
 function showEduSectionReadOnly(f, date) {
   document.getElementById('section-edu').classList.remove('hidden');
   let eduAccum = ""; let eduOjt = ""; let cleanEduComment = f.eduData.comment || "";
@@ -221,6 +221,7 @@ function updateSubmitButtonText() {
   if(textMap[currentUser.role]) btn.innerText = textMap[currentUser.role];
 }
 
+// ⚙️ 問題6：教育中心最高總控調關代碼
 function executeForceReset() {
   const selIdx = document.getElementById('pending-form-select').value; if (selIdx === "") return alert("請先選定欲手動控管的待辦單據！");
   const targetStatus = document.getElementById('force-reset-select').value; if(!targetStatus) return alert("請選取欲手動調跳關的目標流程進度！");
@@ -236,11 +237,12 @@ function executeForceReset() {
   }
 }
 
+// 🚫 問題7：學員反映考核疑慮一鍵直退第一關店長修改
 function rejectForm() {
   if (!currentUser) return; const role = currentUser.role; let reason = "";
   if (role === "學員") {
-    reason = prompt("⚠️ 儲備幹部同仁您好，請填寫您對考核內容有疑慮之原因（本單將一鍵直接跨級退回給分店店長重新跑流程）：");
-    if (!reason || reason.trim() === "") return alert("學員反映考核疑慮『必須填寫具體原因』！操作已拒絕。");
+    reason = prompt("⚠️ 儲備幹部您好，請填寫您對考核內容有疑慮之原因（本單將一鍵直接跨級退回給分店店長重新跑流程）：");
+    if (!reason || reason.trim() === "") return alert("學員反映考核疑慮『必須填寫具體原因』！操作已安全拒絕。");
   } else { if(!confirm("確定要將本月考核單據退回至上一流程端進行修改嗎？")) return; }
   
   showLoading(true);
@@ -270,6 +272,7 @@ function submitForm() {
     const accum = document.getElementById('edu-accum').value.trim(); const ojt = document.getElementById('edu-ojt').value.trim();
     const eduComment = document.getElementById('edu-comment').value.trim();
     if(!sc1 || !sc2 || !sc3 || !sc4 || !eduComment || !accum || !ojt) return alert("請完整輸入 4 項成果分數、累計積分、OJT篇數與異常報告！");
+    
     let combinedEduComment = `【職能累計：${accum}分｜OJT完成：${ojt}篇】\n${eduComment}`;
     payload = { rowIndex: window.currentFormRowIndex, empId: currentUser.empId, edu1: sc1, edu2: sc2, edu3: sc3, edu4: sc4, eduComment: combinedEduComment, signatureType: useSavedSig ? "saved" : "manual", signatureBase64: useSavedSig ? "" : canvasMap['signature-canvas-edu'].cvs.toDataURL(), savedSignaturePath: currentUser.savedSignature };
   }
