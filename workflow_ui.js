@@ -93,6 +93,41 @@ const metrics = [
   }
 ];
 
+const educationScoreRules = [
+  {
+    id: "edu-score1",
+    cardId: "edu-card-1",
+    statusId: "edu-score1-status",
+    label: "職能積分得分",
+    min: 0,
+    max: 15
+  },
+  {
+    id: "edu-score2",
+    cardId: "edu-card-2",
+    statusId: "edu-score2-status",
+    label: "OJT完成篇數得分",
+    min: 0,
+    max: 10
+  },
+  {
+    id: "edu-score3",
+    cardId: "edu-card-3",
+    statusId: "edu-score3-status",
+    label: "每週進度回報得分",
+    min: 0,
+    max: 5
+  },
+  {
+    id: "edu-score4",
+    cardId: "edu-card-4",
+    statusId: "edu-score4-status",
+    label: "培訓課程狀況得分",
+    min: 0,
+    max: 10
+  }
+];
+
 window.areaAdjustMode = "none";
 window.areaAdjustMagnitude = 0;
 window.currentSelectedManagerCase = null;
@@ -167,65 +202,235 @@ function ensureBasicInfoCard() {
 
 function ensureEducationLabels() {
   const section = document.getElementById("section-edu");
-  if (!section || section.dataset.upgraded === "1") return;
+  if (!section) return;
 
   section.dataset.upgraded = "1";
 
   const heading = section.querySelector("h3");
   if (heading) {
     heading.innerText =
-      "第二關：教育中心填寫（學習成果階段，共40%）";
+      "第二關：教育中心填寫（學習成果階段，共40分）";
   }
 
-  const scoreInputs = [
-    { id: "edu-score1", label: "職能積分得分（0～15分）", max: 15 },
-    { id: "edu-score2", label: "OJT完成篇數得分（0～10分）", max: 10 },
-    { id: "edu-score3", label: "每週進度回報得分（0～5分）", max: 5 },
-    { id: "edu-score4", label: "培訓課程狀況得分（0～10分）", max: 10 }
-  ];
+  educationScoreRules.forEach((rule) => {
+    const input = document.getElementById(rule.id);
+    if (!input) return;
 
-  scoreInputs.forEach((item) => {
-    const input = document.getElementById(item.id);
+    input.min = String(rule.min);
+    input.max = String(rule.max);
+    input.step = "1";
+    input.inputMode = "numeric";
+    input.setAttribute(
+      "onkeydown",
+      "return preventInvalidNonNegativeIntegerKey(event)"
+    );
+    input.setAttribute(
+      "oninput",
+      `handleEducationScoreInput(this, ${rule.max})`
+    );
+    input.setAttribute(
+      "onblur",
+      `handleEducationScoreInput(this, ${rule.max})`
+    );
+  });
+
+  [
+    ["edu-accum", "edu-accum-status"],
+    ["edu-ojt", "edu-ojt-status"]
+  ].forEach(([inputId, statusId]) => {
+    const input = document.getElementById(inputId);
     if (!input) return;
 
     input.min = "0";
-    input.max = String(item.max);
     input.step = "1";
-    input.setAttribute("oninput", "updateTotalScore()");
-
-    const label = input.parentElement
-      ? input.parentElement.querySelector("label")
-      : null;
-
-    if (label) label.innerText = item.label;
+    input.inputMode = "numeric";
+    input.setAttribute(
+      "onkeydown",
+      "return preventInvalidNonNegativeIntegerKey(event)"
+    );
+    input.setAttribute(
+      "oninput",
+      `handleEducationCountInput(this, '${statusId}')`
+    );
+    input.setAttribute(
+      "onblur",
+      `handleEducationCountInput(this, '${statusId}')`
+    );
   });
 
-  const accum = document.getElementById("edu-accum");
-  if (accum && accum.parentElement) {
-    const label = accum.parentElement.querySelector("label");
-    if (label) label.innerHTML =
-      '<i class="fa-solid fa-calculator mr-1"></i> 職能積分累計';
-    accum.min = "0";
-    accum.step = "1";
-  }
-
-  const ojt = document.getElementById("edu-ojt");
-  if (ojt && ojt.parentElement) {
-    const label = ojt.parentElement.querySelector("label");
-    if (label) label.innerHTML =
-      '<i class="fa-solid fa-book mr-1"></i> OJT完成篇數';
-    ojt.min = "0";
-    ojt.step = "1";
-  }
-
   const comment = document.getElementById("edu-comment");
-  if (comment && comment.parentElement) {
-    const label = comment.parentElement.querySelector("label");
-    if (label) {
-      label.className = "block text-sm font-bold text-red-600 mb-1";
-      label.innerText = "教育中心評語（必填；無異常請填「無」）：";
+  if (comment) {
+    comment.placeholder =
+      "有異常請具體說明；沒有異常請填「無」";
+  }
+
+  updateEducationScoreCards();
+}
+
+function preventInvalidNonNegativeIntegerKey(event) {
+  const blockedKeys = ["e", "E", "+", "-", "."];
+
+  if (blockedKeys.includes(event.key)) {
+    event.preventDefault();
+    return false;
+  }
+
+  return true;
+}
+
+function handleEducationScoreInput(input, max) {
+  if (!input) return;
+
+  const rawValue = String(input.value || "").trim();
+
+  if (rawValue !== "" && !/^\d+$/.test(rawValue)) {
+    markEducationInputState_(input, false);
+  } else {
+    const numberValue = Number(rawValue);
+    const valid =
+      rawValue !== "" &&
+      Number.isInteger(numberValue) &&
+      numberValue >= 0 &&
+      numberValue <= Number(max);
+
+    markEducationInputState_(
+      input,
+      rawValue === "" ? null : valid
+    );
+  }
+
+  updateEducationScoreCards();
+  updateTotalScore();
+}
+
+function handleEducationCountInput(input, statusId) {
+  if (!input) return;
+
+  const rawValue = String(input.value || "").trim();
+  const numberValue = Number(rawValue);
+  const valid =
+    rawValue !== "" &&
+    /^\d+$/.test(rawValue) &&
+    Number.isInteger(numberValue) &&
+    numberValue >= 0;
+
+  markEducationInputState_(
+    input,
+    rawValue === "" ? null : valid
+  );
+
+  const status = document.getElementById(statusId);
+  if (status) {
+    if (rawValue === "") {
+      status.innerText = "請輸入0以上整數";
+      status.className = "text-xs font-bold text-gray-500 mt-2";
+    } else if (valid) {
+      status.innerText = `已填：${numberValue}`;
+      status.className = "text-xs font-bold text-emerald-700 mt-2";
+    } else {
+      status.innerText = "格式錯誤：僅接受0以上整數";
+      status.className = "text-xs font-bold text-red-600 mt-2";
     }
   }
+}
+
+function markEducationInputState_(input, valid) {
+  input.classList.remove(
+    "border-red-400",
+    "bg-red-50",
+    "border-emerald-400",
+    "bg-emerald-50"
+  );
+
+  if (valid === true) {
+    input.classList.add(
+      "border-emerald-400",
+      "bg-emerald-50"
+    );
+  } else if (valid === false) {
+    input.classList.add(
+      "border-red-400",
+      "bg-red-50"
+    );
+  }
+}
+
+function updateEducationScoreCards() {
+  let total = 0;
+
+  educationScoreRules.forEach((rule) => {
+    const input = document.getElementById(rule.id);
+    const card = document.getElementById(rule.cardId);
+    const status = document.getElementById(rule.statusId);
+
+    if (!input) return;
+
+    const rawValue = String(input.value || "").trim();
+    const numberValue = Number(rawValue);
+    const valid =
+      rawValue !== "" &&
+      /^\d+$/.test(rawValue) &&
+      Number.isInteger(numberValue) &&
+      numberValue >= rule.min &&
+      numberValue <= rule.max;
+
+    if (valid) total += numberValue;
+
+    if (status) {
+      if (rawValue === "") {
+        status.innerText = "尚未填寫";
+        status.className = "text-xs font-bold text-gray-500";
+      } else if (valid) {
+        status.innerText = `已填：${numberValue} / ${rule.max}分`;
+        status.className = "text-xs font-bold text-emerald-700";
+      } else {
+        status.innerText =
+          `格式錯誤：請輸入${rule.min}～${rule.max}整數`;
+        status.className = "text-xs font-bold text-red-600";
+      }
+    }
+
+    if (card) {
+      card.classList.remove(
+        "border-red-300",
+        "bg-red-50/40",
+        "border-emerald-300",
+        "bg-emerald-50/40"
+      );
+
+      if (rawValue !== "" && valid) {
+        card.classList.add(
+          "border-emerald-300",
+          "bg-emerald-50/40"
+        );
+      } else if (rawValue !== "" && !valid) {
+        card.classList.add(
+          "border-red-300",
+          "bg-red-50/40"
+        );
+      }
+    }
+  });
+
+  setText("edu-live-total", total);
+}
+
+function getValidEducationScore(id, max) {
+  const value = getTrimmedValue(id);
+
+  if (!isIntegerInRange(value, 0, max)) {
+    return 0;
+  }
+
+  return Number(value);
+}
+
+function fillEducationNoIssue() {
+  const comment = document.getElementById("edu-comment");
+  if (!comment || comment.disabled) return;
+
+  comment.value = "無";
+  comment.focus();
 }
 
 function ensureAreaAdjustmentButtons() {
@@ -636,11 +841,13 @@ function updateTotalScore() {
     if (Number.isFinite(score)) managerTotal += score;
   }
 
-  const edu1 = getNumericValue("edu-score1");
-  const edu2 = getNumericValue("edu-score2");
-  const edu3 = getNumericValue("edu-score3");
-  const edu4 = getNumericValue("edu-score4");
+  const edu1 = getValidEducationScore("edu-score1", 15);
+  const edu2 = getValidEducationScore("edu-score2", 10);
+  const edu3 = getValidEducationScore("edu-score3", 5);
+  const edu4 = getValidEducationScore("edu-score4", 10);
   const educationTotal = edu1 + edu2 + edu3 + edu4;
+
+  setText("edu-live-total", educationTotal);
 
   let adjustValue = getNumericValue("area-adjust-score");
 
@@ -852,6 +1059,15 @@ function resetFormFields() {
 
   restoreAllSignatureBlocks();
   setAreaAdjustmentFromValue(0, false);
+  updateEducationScoreCards();
+  handleEducationCountInput(
+    document.getElementById("edu-accum"),
+    "edu-accum-status"
+  );
+  handleEducationCountInput(
+    document.getElementById("edu-ojt"),
+    "edu-ojt-status"
+  );
   updateTotalScore();
 }
 
@@ -1782,6 +1998,15 @@ function prepareCurrentRoleEdit(form) {
     setValue("edu-accum", edu.accum);
     setValue("edu-ojt", edu.ojt);
     setValue("edu-comment", edu.comment || "");
+    updateEducationScoreCards();
+    handleEducationCountInput(
+      document.getElementById("edu-accum"),
+      "edu-accum-status"
+    );
+    handleEducationCountInput(
+      document.getElementById("edu-ojt"),
+      "edu-ojt-status"
+    );
 
     setSectionInputsDisabled("section-edu", false);
     setupGlobalSavedSignature();
@@ -1993,6 +2218,15 @@ function showEduSectionReadOnly(form, date) {
   setValue("edu-accum", edu.accum);
   setValue("edu-ojt", edu.ojt);
   setValue("edu-comment", edu.comment || "");
+  updateEducationScoreCards();
+  handleEducationCountInput(
+    document.getElementById("edu-accum"),
+    "edu-accum-status"
+  );
+  handleEducationCountInput(
+    document.getElementById("edu-ojt"),
+    "edu-ojt-status"
+  );
 
   setSectionInputsDisabled("section-edu", true);
 
@@ -2291,7 +2525,7 @@ function submitForm() {
 
     if (Object.values(values).some((value) => value === "")) {
       alert(
-        "請完整輸入四項得分、職能積分累計、OJT完成篇數及教育中心評語。"
+        "請完整輸入四項得分、職能積分累計、OJT完成篇數及教育中心異常回報。"
       );
       return;
     }
@@ -2315,6 +2549,11 @@ function submitForm() {
       !isNonNegativeInteger(values.eduOjt)
     ) {
       alert("職能積分累計及OJT完成篇數必須是0以上的整數。");
+      return;
+    }
+
+    if (!values.eduComment) {
+      alert("教育中心異常回報為必填；無異常請填「無」。");
       return;
     }
 
