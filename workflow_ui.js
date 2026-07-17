@@ -139,6 +139,12 @@ window.adminManagementMode = false;
 window.managementAssigneeCache = [];
 window.currentReopenSourceForm = null;
 
+// 月考核派發管理資料。
+window.monthlyDispatchDashboard = null;
+window.monthlyDispatchRows = [];
+window.monthlyDispatchCandidates = [];
+
+
 // 教育中心扣分式計算器。
 // V2仍只保存最後實得分，不增加工作表欄位。
 window.eduWeeklyPenaltyCount = 0;
@@ -161,6 +167,7 @@ function ensureDynamicUiEnhancements() {
   ensureForceResetOptions();
   ensureTrackingBox();
   ensurePdfActionBox();
+  configureMonthlyDispatchAdminVisibility();
 
   const storeLabel = document.querySelector("#store-select-box label");
   if (storeLabel) {
@@ -1435,6 +1442,7 @@ function getSignatureConfig(role) {
  * ------------------------------------------------------------- */
 
 function loadUnderlings(store) {
+  configureMonthlyDispatchAdminVisibility();
   callAPI(
     "getUnderlings",
     {
@@ -1645,6 +1653,7 @@ function reloadPendingList() {
       loadTrackingList();
       loadHistoryList();
       loadProgressMonitor();
+      loadMonthlyDispatchDashboard();
     }
   );
 }
@@ -3811,6 +3820,375 @@ function getNumericValue(id) {
 
   return Number.isFinite(value) ? value : 0;
 }
+
+
+/* ---------------------------------------------------------------
+ * 教育中心／總經理：月考核派發管理
+ * ------------------------------------------------------------- */
+
+function configureMonthlyDispatchAdminVisibility() {
+  const box = document.getElementById(
+    "monthly-dispatch-admin-box"
+  );
+
+  if (!box) return;
+
+  const allowed = Boolean(
+    currentUser &&
+    ["教育中心", "總經理"].includes(currentUser.role)
+  );
+
+  box.classList.toggle("hidden", !allowed);
+
+  if (!allowed) return;
+
+  const isEducation = currentUser.role === "教育中心";
+  const actions = document.getElementById(
+    "dispatch-admin-actions"
+  );
+  const note = document.getElementById(
+    "dispatch-admin-role-note"
+  );
+
+  if (actions) {
+    actions.classList.toggle("hidden", !isEducation);
+  }
+
+  if (note) {
+    note.innerText = isEducation
+      ? "可依月份查看派發狀況、補齊缺漏、單一人員補派及同步調店。"
+      : "總經理可查看各月份派發統計與案件狀況；管理按鈕僅教育中心可使用。";
+  }
+
+  const monthInput = document.getElementById(
+    "dispatch-admin-month"
+  );
+
+  if (monthInput && !String(monthInput.value || "").trim()) {
+    monthInput.value = getCurrentRocMonthForDispatch_();
+  }
+}
+
+function getCurrentRocMonthForDispatch_() {
+  const now = new Date();
+  const rocYear = now.getFullYear() - 1911;
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${rocYear}/${month}`;
+}
+
+function normalizeRocMonthForDispatch_(value) {
+  const text = String(value || "").trim();
+  const match = text.match(/^(\d{2,3})\/(\d{1,2})$/);
+
+  if (!match) return "";
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+
+  if (
+    !Number.isInteger(year) ||
+    year <= 0 ||
+    !Number.isInteger(month) ||
+    month < 1 ||
+    month > 12
+  ) {
+    return "";
+  }
+
+  return `${year}/${String(month).padStart(2, "0")}`;
+}
+
+function loadMonthlyDispatchDashboard() {
+  configureMonthlyDispatchAdminVisibility();
+
+  if (
+    !currentUser ||
+    !["教育中心", "總經理"].includes(currentUser.role)
+  ) {
+    return;
+  }
+
+  const monthInput = document.getElementById(
+    "dispatch-admin-month"
+  );
+  const normalizedMonth = normalizeRocMonthForDispatch_(
+    monthInput ? monthInput.value : ""
+  );
+
+  if (!normalizedMonth) {
+    alert("請輸入正確民國年月，例如：115/07。");
+    return;
+  }
+
+  if (monthInput) monthInput.value = normalizedMonth;
+
+  callAPI(
+    "getMonthlyDispatchDashboard",
+    {
+      rocMonth: normalizedMonth,
+      empId: currentUser.empId
+    },
+    (result) => {
+      if (!result || !result.success) {
+        alert(
+          "載入月考核派發管理失敗：" +
+          (result && result.message
+            ? result.message
+            : "未知錯誤")
+        );
+        return;
+      }
+
+      window.monthlyDispatchDashboard = result;
+      window.monthlyDispatchRows = Array.isArray(result.rows)
+        ? result.rows
+        : [];
+      window.monthlyDispatchCandidates = Array.isArray(
+        result.manualCandidates
+      )
+        ? result.manualCandidates
+        : [];
+
+      updateMonthlyDispatchStats_(result.stats || {});
+      renderMonthlyDispatchCandidates_();
+      renderMonthlyDispatchRows();
+
+      const summary = document.getElementById(
+        "dispatch-admin-summary"
+      );
+
+      if (summary) {
+        summary.innerText =
+          `考核月份：${result.rocMonth}｜` +
+          `資料更新時間：${result.generatedAt || "-"}`;
+      }
+    }
+  );
+}
+
+function updateMonthlyDispatchStats_(stats) {
+  const mapping = {
+    "dispatch-stat-eligible": stats.eligibleCount,
+    "dispatch-stat-created": stats.createdCount,
+    "dispatch-stat-missing": stats.missingCount,
+    "dispatch-stat-progress": stats.inProgressCount,
+    "dispatch-stat-closed": stats.closedCount,
+    "dispatch-stat-invalid": stats.invalidCount,
+    "dispatch-stat-excluded": stats.excludedCount,
+    "dispatch-stat-moved": stats.movedCount
+  };
+
+  Object.keys(mapping).forEach((id) => {
+    setText(id, Number(mapping[id]) || 0);
+  });
+}
+
+function renderMonthlyDispatchCandidates_() {
+  const select = document.getElementById(
+    "dispatch-single-employee"
+  );
+
+  if (!select) return;
+
+  const candidates = window.monthlyDispatchCandidates || [];
+
+  select.innerHTML =
+    '<option value="">-- 請選擇補派人員 --</option>';
+
+  candidates.forEach((item) => {
+    const existingTag = item.alreadyExists
+      ? "｜該月已有案件"
+      : "";
+    const needTag = item.needsEvaluation
+      ? ""
+      : "｜J欄為否";
+    const invalidTag = item.valid
+      ? ""
+      : `｜資料異常：${item.issue || "請檢查主檔"}`;
+
+    select.insertAdjacentHTML(
+      "beforeend",
+      `<option value="${escapeHtml(item.employeeId)}" ${
+        item.alreadyExists || !item.valid ? "disabled" : ""
+      }>${escapeHtml(item.employeeId)}－${escapeHtml(item.employeeName)}｜${escapeHtml(item.storeDisplay || item.storeCode || "未設定店別")}${escapeHtml(existingTag + needTag + invalidTag)}</option>`
+    );
+  });
+}
+
+function renderMonthlyDispatchRows() {
+  const body = document.getElementById(
+    "dispatch-admin-table-body"
+  );
+
+  if (!body) return;
+
+  const filter = getTrimmedValue("dispatch-admin-filter") || "all";
+  const rows = (window.monthlyDispatchRows || []).filter((item) => {
+    if (filter === "all") return true;
+    return String(item.category || "") === filter;
+  });
+
+  if (rows.length === 0) {
+    body.innerHTML =
+      '<tr><td colspan="8" class="p-6 text-center font-bold text-gray-500">此篩選條件目前沒有資料</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map((item) => {
+    const badgeClass = {
+      missing: "bg-amber-100 text-amber-800",
+      progress: "bg-blue-100 text-blue-800",
+      closed: "bg-emerald-100 text-emerald-800",
+      invalid: "bg-red-100 text-red-800"
+    }[item.category] || "bg-slate-100 text-slate-800";
+
+    return `
+      <tr class="border-t border-indigo-100 hover:bg-indigo-50/50">
+        <td class="p-3 font-bold text-gray-800">${escapeHtml(item.employeeId || "-")}<br><span class="text-xs text-gray-500">${escapeHtml(item.employeeName || "-")}</span></td>
+        <td class="p-3 font-bold text-gray-700">${escapeHtml(item.storeDisplay || item.currentStore || "-")}</td>
+        <td class="p-3 text-gray-700">${escapeHtml(item.currentArea || "-")}<br><span class="text-xs text-gray-500">${escapeHtml(item.currentDepartment || "-")}</span></td>
+        <td class="p-3 font-bold text-indigo-800">${escapeHtml(item.evaluationNo || "尚未建立")}</td>
+        <td class="p-3 text-gray-700">${escapeHtml(item.flowStatus || "-")}</td>
+        <td class="p-3"><span class="inline-block px-2.5 py-1 rounded-full text-xs font-black ${badgeClass}">${escapeHtml(item.stateLabel || "-")}</span></td>
+        <td class="p-3 font-bold ${item.moved === "是" ? "text-violet-700" : "text-gray-500"}">${escapeHtml(item.moved || "否")}</td>
+        <td class="p-3 text-xs font-bold ${item.issue ? "text-red-700" : "text-gray-500"}">${escapeHtml(item.issue || item.note || "-")}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function createMissingMonthlyDispatches() {
+  if (!currentUser || currentUser.role !== "教育中心") return;
+
+  const month = normalizeRocMonthForDispatch_(
+    getTrimmedValue("dispatch-admin-month")
+  );
+
+  if (!month) {
+    alert("請先輸入正確民國年月。");
+    return;
+  }
+
+  if (!confirm(`確定要補齊 ${month} 的缺漏案件嗎？\n同一人同月份已有R0案件時不會重複建立。`)) {
+    return;
+  }
+
+  callAPI(
+    "createMonthlyDispatchMissing",
+    {
+      rocMonth: month,
+      empId: currentUser.empId
+    },
+    (result) => {
+      if (!result || !result.success) {
+        alert(
+          "補派失敗：" +
+          (result && result.message ? result.message : "未知錯誤")
+        );
+        return;
+      }
+
+      alert(result.message || "缺漏案件補派完成。");
+      loadMonthlyDispatchDashboard();
+      reloadPendingList();
+    }
+  );
+}
+
+function createSingleMonthlyDispatch() {
+  if (!currentUser || currentUser.role !== "教育中心") return;
+
+  const month = normalizeRocMonthForDispatch_(
+    getTrimmedValue("dispatch-admin-month")
+  );
+  const employeeId = getTrimmedValue(
+    "dispatch-single-employee"
+  );
+  const override = Boolean(
+    document.getElementById("dispatch-allow-override")?.checked
+  );
+
+  if (!month) {
+    alert("請先輸入正確民國年月。");
+    return;
+  }
+
+  if (!employeeId) {
+    alert("請選擇要補派的人員。");
+    return;
+  }
+
+  const candidate = (window.monthlyDispatchCandidates || []).find(
+    (item) => String(item.employeeId) === employeeId
+  );
+
+  if (
+    candidate &&
+    !candidate.needsEvaluation &&
+    !override
+  ) {
+    alert(
+      "此人員在員工主檔J欄不是「是」。\n如確定臨時加入，請勾選允許補派。"
+    );
+    return;
+  }
+
+  if (!confirm(`確定為 ${employeeId} 建立 ${month} 的R0考核案件嗎？`)) {
+    return;
+  }
+
+  callAPI(
+    "createSingleMonthlyDispatch",
+    {
+      rocMonth: month,
+      targetEmployeeId: employeeId,
+      allowOverride: override,
+      empId: currentUser.empId
+    },
+    (result) => {
+      if (!result || !result.success) {
+        alert(
+          "單一人員補派失敗：" +
+          (result && result.message ? result.message : "未知錯誤")
+        );
+        return;
+      }
+
+      alert(result.message || "單一人員案件建立完成。");
+      loadMonthlyDispatchDashboard();
+      reloadPendingList();
+    }
+  );
+}
+
+function syncMonthlyDispatchAssignments() {
+  if (!currentUser || currentUser.role !== "教育中心") return;
+
+  if (!confirm("確定同步所有未結案案件的目前店別、轄區及處別嗎？\n既有分數、評語與簽名不會清除。")) {
+    return;
+  }
+
+  callAPI(
+    "syncMonthlyDispatchAssignments",
+    {
+      empId: currentUser.empId
+    },
+    (result) => {
+      if (!result || !result.success) {
+        alert(
+          "調店同步失敗：" +
+          (result && result.message ? result.message : "未知錯誤")
+        );
+        return;
+      }
+
+      alert(result.message || "調店同步完成。");
+      loadMonthlyDispatchDashboard();
+      reloadPendingList();
+    }
+  );
+}
+
 
 function getTrimmedValue(id) {
   const element = document.getElementById(id);
