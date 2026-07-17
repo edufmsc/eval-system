@@ -115,14 +115,16 @@ const educationScoreRules = [
     cardId: "edu-card-3",
     label: "每週進度回報得分",
     min: 0,
-    max: 5
+    max: 5,
+    calculatorDriven: true
   },
   {
     id: "edu-score4",
     cardId: "edu-card-4",
     label: "培訓課程狀況得分",
     min: 0,
-    max: 10
+    max: 10,
+    calculatorDriven: true
   }
 ];
 
@@ -136,6 +138,14 @@ window.managerScoresLocked = true;
 window.adminManagementMode = false;
 window.managementAssigneeCache = [];
 window.currentReopenSourceForm = null;
+
+// 教育中心扣分式計算器。
+// V2仍只保存最後實得分，不增加工作表欄位。
+window.eduWeeklyPenaltyCount = 0;
+window.eduAttendancePenaltyCount = 0;
+window.eduHomeworkLateDays = 0;
+window.eduTrainingLegacyDeduction = 0;
+window.eduTrainingPenaltyTouched = true;
 
 
 /* ---------------------------------------------------------------
@@ -214,7 +224,10 @@ function ensureEducationLabels() {
     const input = document.getElementById(rule.id);
     if (!input) return;
 
-    if (Array.isArray(rule.allowedValues)) {
+    if (
+      Array.isArray(rule.allowedValues) ||
+      rule.calculatorDriven
+    ) {
       input.type = "hidden";
       return;
     }
@@ -267,7 +280,221 @@ function ensureEducationLabels() {
       "有異常請具體說明；沒有異常請填「無」";
   }
 
+  // 新案件預設沒有扣分，因此第3項為5分、第4項為10分。
+  // 載入既有案件時，後續會由loadEducationPenaltyFromScores重新換算。
+  if (!String(document.getElementById("edu-score3")?.value || "").trim()) {
+    resetEducationPenaltyCalculator();
+  } else {
+    updateEducationPenaltyCalculator();
+  }
+
   updateEducationScoreCards();
+}
+
+function clampEducationPenalty_(value, max) {
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue)) return 0;
+
+  return Math.max(
+    0,
+    Math.min(Number(max), Math.trunc(numberValue))
+  );
+}
+
+function canEditEducationPenalty_() {
+  return Boolean(
+    !isReadOnlyMode &&
+    currentUser &&
+    currentUser.role === "教育中心"
+  );
+}
+
+function resetEducationPenaltyCalculator() {
+  window.eduWeeklyPenaltyCount = 0;
+  window.eduAttendancePenaltyCount = 0;
+  window.eduHomeworkLateDays = 0;
+  window.eduTrainingLegacyDeduction = 0;
+  window.eduTrainingPenaltyTouched = true;
+
+  const score3 = document.getElementById("edu-score3");
+  const score4 = document.getElementById("edu-score4");
+
+  if (score3) score3.value = "5";
+  if (score4) score4.value = "10";
+
+  updateEducationPenaltyCalculator();
+}
+
+function loadEducationPenaltyFromScores(score3Value, score4Value) {
+  const score3Text = String(
+    score3Value === null || score3Value === undefined
+      ? ""
+      : score3Value
+  ).trim();
+
+  const score4Text = String(
+    score4Value === null || score4Value === undefined
+      ? ""
+      : score4Value
+  ).trim();
+
+  const score3 = Number(score3Text);
+  const score4 = Number(score4Text);
+
+  window.eduWeeklyPenaltyCount =
+    score3Text !== "" &&
+    Number.isInteger(score3) &&
+    score3 >= 0 &&
+    score3 <= 5
+      ? 5 - score3
+      : 0;
+
+  window.eduAttendancePenaltyCount = 0;
+  window.eduHomeworkLateDays = 0;
+
+  if (
+    score4Text !== "" &&
+    Number.isInteger(score4) &&
+    score4 >= 0 &&
+    score4 <= 10
+  ) {
+    window.eduTrainingLegacyDeduction = 10 - score4;
+    window.eduTrainingPenaltyTouched = false;
+  } else {
+    window.eduTrainingLegacyDeduction = 0;
+    window.eduTrainingPenaltyTouched = true;
+  }
+
+  updateEducationPenaltyCalculator();
+}
+
+function changeEducationPenalty(type, delta) {
+  if (!canEditEducationPenalty_()) return;
+
+  const change = Number(delta) || 0;
+
+  if (type === "weekly") {
+    window.eduWeeklyPenaltyCount =
+      clampEducationPenalty_(
+        window.eduWeeklyPenaltyCount + change,
+        5
+      );
+  } else {
+    // 既有資料只保存實得分，沒有保存兩種扣分的分類。
+    // 第一次調整任一分類時，改由本次輸入重新計算。
+    if (!window.eduTrainingPenaltyTouched) {
+      window.eduTrainingLegacyDeduction = 0;
+      window.eduAttendancePenaltyCount = 0;
+      window.eduHomeworkLateDays = 0;
+      window.eduTrainingPenaltyTouched = true;
+    }
+
+    if (type === "attendance") {
+      window.eduAttendancePenaltyCount =
+        clampEducationPenalty_(
+          window.eduAttendancePenaltyCount + change,
+          10
+        );
+    }
+
+    if (type === "homework") {
+      window.eduHomeworkLateDays =
+        clampEducationPenalty_(
+          window.eduHomeworkLateDays + change,
+          10
+        );
+    }
+  }
+
+  updateEducationPenaltyCalculator();
+}
+
+function updateEducationPenaltyCalculator() {
+  const weeklyCount = clampEducationPenalty_(
+    window.eduWeeklyPenaltyCount,
+    5
+  );
+
+  const attendanceCount = clampEducationPenalty_(
+    window.eduAttendancePenaltyCount,
+    10
+  );
+
+  const homeworkDays = clampEducationPenalty_(
+    window.eduHomeworkLateDays,
+    10
+  );
+
+  const legacyDeduction = clampEducationPenalty_(
+    window.eduTrainingLegacyDeduction,
+    10
+  );
+
+  window.eduWeeklyPenaltyCount = weeklyCount;
+  window.eduAttendancePenaltyCount = attendanceCount;
+  window.eduHomeworkLateDays = homeworkDays;
+  window.eduTrainingLegacyDeduction = legacyDeduction;
+
+  const weeklyDeduction = weeklyCount;
+  const weeklyFinal = Math.max(0, 5 - weeklyDeduction);
+
+  const trainingDeduction = window.eduTrainingPenaltyTouched
+    ? Math.min(10, attendanceCount + homeworkDays)
+    : legacyDeduction;
+
+  const trainingFinal = Math.max(0, 10 - trainingDeduction);
+
+  const score3 = document.getElementById("edu-score3");
+  const score4 = document.getElementById("edu-score4");
+
+  if (score3) score3.value = String(weeklyFinal);
+  if (score4) score4.value = String(trainingFinal);
+
+  setText("edu-weekly-count", weeklyCount >= 5 ? "5+" : weeklyCount);
+  setText("edu-weekly-deduction", weeklyDeduction);
+  setText("edu-weekly-final", weeklyFinal);
+
+  setText("edu-attendance-count", attendanceCount);
+  setText("edu-homework-count", homeworkDays);
+  setText("edu-training-deduction", trainingDeduction);
+  setText("edu-training-final", trainingFinal);
+  setText("edu-training-existing-deduction", legacyDeduction);
+
+  const legacyNote = document.getElementById(
+    "edu-training-existing-note"
+  );
+
+  if (legacyNote) {
+    legacyNote.classList.toggle(
+      "hidden",
+      window.eduTrainingPenaltyTouched ||
+      legacyDeduction === 0
+    );
+  }
+
+  const editable = canEditEducationPenalty_();
+
+  const buttonStates = [
+    ["edu-weekly-minus", !editable || weeklyCount <= 0],
+    ["edu-weekly-plus", !editable || weeklyCount >= 5],
+    ["edu-attendance-minus", !editable || attendanceCount <= 0 || !window.eduTrainingPenaltyTouched],
+    ["edu-attendance-plus", !editable || attendanceCount >= 10],
+    ["edu-homework-minus", !editable || homeworkDays <= 0 || !window.eduTrainingPenaltyTouched],
+    ["edu-homework-plus", !editable || homeworkDays >= 10]
+  ];
+
+  buttonStates.forEach(([id, disabled]) => {
+    const button = document.getElementById(id);
+    if (!button) return;
+
+    button.disabled = Boolean(disabled);
+    button.classList.toggle("opacity-40", Boolean(disabled));
+    button.classList.toggle("cursor-not-allowed", Boolean(disabled));
+  });
+
+  updateEducationScoreCards();
+  updateTotalScore();
 }
 
 function setEducationScoreOption(inputId, value) {
@@ -1090,6 +1317,7 @@ function resetFormFields() {
 
   restoreAllSignatureBlocks();
   setAreaAdjustmentFromValue(0, false);
+  resetEducationPenaltyCalculator();
   updateEducationScoreCards();
   handleEducationCountInput(
     document.getElementById("edu-accum"),
@@ -2024,11 +2252,13 @@ function prepareCurrentRoleEdit(form) {
 
     setValue("edu-score1", edu.score1);
     setValue("edu-score2", edu.score2);
-    setValue("edu-score3", edu.score3);
-    setValue("edu-score4", edu.score4);
     setValue("edu-accum", edu.accum);
     setValue("edu-ojt", edu.ojt);
     setValue("edu-comment", edu.comment || "");
+    loadEducationPenaltyFromScores(
+      edu.score3,
+      edu.score4
+    );
     updateEducationScoreCards();
     handleEducationCountInput(
       document.getElementById("edu-accum"),
@@ -2040,6 +2270,7 @@ function prepareCurrentRoleEdit(form) {
     );
 
     setSectionInputsDisabled("section-edu", false);
+    updateEducationPenaltyCalculator();
     setupGlobalSavedSignature();
   } else if (role === "區主管") {
     showElement("section-area");
@@ -2244,11 +2475,13 @@ function showEduSectionReadOnly(form, date) {
 
   setValue("edu-score1", edu.score1);
   setValue("edu-score2", edu.score2);
-  setValue("edu-score3", edu.score3);
-  setValue("edu-score4", edu.score4);
   setValue("edu-accum", edu.accum);
   setValue("edu-ojt", edu.ojt);
   setValue("edu-comment", edu.comment || "");
+  loadEducationPenaltyFromScores(
+    edu.score3,
+    edu.score4
+  );
   updateEducationScoreCards();
   handleEducationCountInput(
     document.getElementById("edu-accum"),
@@ -2260,6 +2493,7 @@ function showEduSectionReadOnly(form, date) {
   );
 
   setSectionInputsDisabled("section-edu", true);
+  updateEducationPenaltyCalculator();
 
   document.getElementById(
     "sig-block-edu"
