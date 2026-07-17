@@ -2125,32 +2125,14 @@ function renderSingleFormToView(form, forceReadOnly) {
   showElement("info-card-container");
   showElement("score-summary-card");
   showElement("workflow-box");
-  showElement("section-manager");
 
-  if (hasManagerContent(form)) {
-    highlightMetricScores(form.scores || []);
-
-    const managerComment = document.getElementById(
-      "manager-comment"
-    );
-
-    if (managerComment) {
-      managerComment.value = form.managerComment || "";
-      managerComment.disabled = true;
-      managerComment.classList.add("bg-gray-100");
-    }
-
-    document.getElementById(
-      "sig-block-manager"
-    ).innerHTML = getSigHTML(
-      "門市店主管",
-      form.managerSig,
-      form.evalDate
-    );
-  }
-
+  // 先將所有已經走過的流程區塊以唯讀方式呈現。
+  // 這項處理同時適用於正常流轉及教育中心的強制流轉。
+  // 例如表單被直接轉到區主管時，門市店主管與教育中心區塊
+  // 即使內容為空白，也必須鎖定，不能留下可輸入欄位或簽名板。
   isReadOnlyMode = true;
   window.managerScoresLocked = true;
+  showManagerSectionReadOnly(form);
   renderCompletedLaterSections(form);
 
   const editable =
@@ -2161,6 +2143,7 @@ function renderSingleFormToView(form, forceReadOnly) {
     );
 
   if (editable) {
+    // 只重新開放目前承辦角色自己的區塊。
     prepareCurrentRoleEdit(form);
   } else {
     hideElement("btn-submit-main");
@@ -2174,12 +2157,80 @@ function renderSingleFormToView(form, forceReadOnly) {
   updateTotalScore();
 }
 
+/**
+ * 將門市店主管區塊完整鎖定為唯讀。
+ * 不論店長資料是否完整，都不允許後續角色修改店長欄位或簽名。
+ */
+function showManagerSectionReadOnly(form) {
+  showElement("section-manager");
+
+  if (Array.isArray(form.scores)) {
+    highlightMetricScores(form.scores);
+  }
+
+  const managerComment = document.getElementById(
+    "manager-comment"
+  );
+
+  if (managerComment) {
+    managerComment.value = form.managerComment || "";
+    managerComment.disabled = true;
+    managerComment.classList.add(
+      "bg-gray-100",
+      "text-gray-500"
+    );
+  }
+
+  const scoreSection = document.getElementById(
+    "score-section"
+  );
+
+  if (scoreSection) {
+    scoreSection
+      .querySelectorAll("button")
+      .forEach((button) => {
+        button.disabled = true;
+        button.classList.add(
+          "cursor-not-allowed"
+        );
+      });
+  }
+
+  const signatureBlock = document.getElementById(
+    "sig-block-manager"
+  );
+
+  if (signatureBlock) {
+    signatureBlock.innerHTML = getSigHTML(
+      "門市店主管",
+      form.managerSig,
+      form.evalDate
+    );
+  }
+}
+
+/**
+ * 依目前流程階段，顯示前面已經走過的所有區塊。
+ * 前置階層一律唯讀；目前承辦階層由 prepareCurrentRoleEdit 重新開放。
+ */
 function renderCompletedLaterSections(form) {
-  if (hasEducationContent(form)) {
+  const stageIndex = getWorkflowStageIndex_(
+    form.currentStatus
+  );
+
+  // 到達區主管或更後面的流程時，教育中心區塊必須出現並鎖定。
+  if (
+    stageIndex > 1 ||
+    hasEducationContent(form)
+  ) {
     showEduSectionReadOnly(form, form.evalDate);
   }
 
-  if (hasAreaContent(form)) {
+  // 到達受評人員或更後面的流程時，區主管區塊必須出現並鎖定。
+  if (
+    stageIndex > 2 ||
+    hasAreaContent(form)
+  ) {
     showAreaSectionReadOnly(
       form.areaComment || "",
       Number(form.areaAdjust) || 0,
@@ -2188,49 +2239,115 @@ function renderCompletedLaterSections(form) {
     );
   }
 
-  if (form.studentSig) {
-    showElement("section-student-confirm");
+  // 到達營業副總或更後面的流程時，受評人員確認區必須顯示唯讀。
+  if (
+    stageIndex > 3 ||
+    Boolean(form.studentSig)
+  ) {
+    showStudentSectionReadOnly(form);
+  }
 
-    const check = document.getElementById(
-      "student-confirm-check"
-    );
+  // 到達總經理或更後面的流程時，營業副總區塊必須顯示唯讀。
+  if (
+    stageIndex > 4 ||
+    Boolean(form.vpSig || form.vpComment)
+  ) {
+    showVpSectionReadOnly(form);
+  }
 
-    if (check) {
-      check.checked = true;
-      check.disabled = true;
-    }
+  // 結案、待產PDF或已有總經理資料時，顯示總經理唯讀區塊。
+  if (
+    stageIndex > 5 ||
+    Boolean(form.gmSig || form.gmComment)
+  ) {
+    showGmSectionReadOnly(form);
+  }
+}
 
-    document.getElementById(
-      "sig-block-student"
-    ).innerHTML = getSigHTML(
+/**
+ * 將流程狀態換算為階段序號。
+ * 0 店長、1 教育中心、2 區主管、3 受評人員、
+ * 4 營業副總、5 總經理、6 已完成簽核／結案。
+ */
+function getWorkflowStageIndex_(status) {
+  const mapping = {};
+
+  mapping[UI_STATUS.MANAGER_NEW] = 0;
+  mapping[UI_STATUS.MANAGER_RECALLED] = 0;
+  mapping[UI_STATUS.MANAGER_RETURNED] = 0;
+  mapping[UI_STATUS.EDU_NEW] = 1;
+  mapping[UI_STATUS.EDU_RETURNED] = 1;
+  mapping[UI_STATUS.AREA_NEW] = 2;
+  mapping[UI_STATUS.AREA_RETURNED] = 2;
+  mapping[UI_STATUS.STUDENT] = 3;
+  mapping[UI_STATUS.VP_NEW] = 4;
+  mapping[UI_STATUS.VP_RETURNED] = 4;
+  mapping[UI_STATUS.GM] = 5;
+  mapping[UI_STATUS.PDF_PENDING] = 6;
+  mapping[UI_STATUS.CLOSED] = 6;
+
+  return Object.prototype.hasOwnProperty.call(
+    mapping,
+    status
+  )
+    ? mapping[status]
+    : 0;
+}
+
+function showStudentSectionReadOnly(form) {
+  showElement("section-student-confirm");
+
+  const check = document.getElementById(
+    "student-confirm-check"
+  );
+
+  if (check) {
+    check.checked = Boolean(form.studentSig);
+    check.disabled = true;
+  }
+
+  const signatureBlock = document.getElementById(
+    "sig-block-student"
+  );
+
+  if (signatureBlock) {
+    signatureBlock.innerHTML = getSigHTML(
       "受評人員",
       form.studentSig,
       form.evalDate
     );
   }
+}
 
-  if (form.vpSig || form.vpComment) {
-    showElement("section-vp");
-    setValue("vp-comment", form.vpComment || "");
-    disableElement("vp-comment", true);
+function showVpSectionReadOnly(form) {
+  showElement("section-vp");
+  setValue("vp-comment", form.vpComment || "");
+  disableElement("vp-comment", true);
 
-    document.getElementById(
-      "sig-block-vp"
-    ).innerHTML = getSigHTML(
+  const signatureBlock = document.getElementById(
+    "sig-block-vp"
+  );
+
+  if (signatureBlock) {
+    signatureBlock.innerHTML = getSigHTML(
       "營業副總",
       form.vpSig,
       form.evalDate
     );
   }
+}
 
-  if (form.gmSig || form.gmComment) {
-    showElement("section-gm");
-    setValue("gm-comment", form.gmComment || "");
-    disableElement("gm-comment", true);
+function showGmSectionReadOnly(form) {
+  showElement("section-gm");
+  setValue("gm-comment", form.gmComment || "");
+  disableElement("gm-comment", true);
 
-    document.getElementById(
-      "sig-block-gm"
-    ).innerHTML = getSigHTML(
+  const signatureBlock = document.getElementById(
+    "sig-block-gm"
+  );
+
+  if (signatureBlock) {
+    signatureBlock.innerHTML = getSigHTML(
       "總經理",
       form.gmSig,
       form.evalDate
@@ -2552,15 +2669,32 @@ function getSigHTML(title, signatureUrl, date) {
   const hasSignature =
     Boolean(String(signatureUrl || "").trim());
 
-  return `
-    <div class="p-4 bg-orange-50/40 border border-orange-200 rounded-xl space-y-2">
-      <div class="text-sm font-black text-gray-800 flex items-center">
-        <i class="fa-solid fa-circle-check text-green-600 mr-1.5"></i>
-        ${escapeHtml(title)}已完成簽名（評核日期：${escapeHtml(safeDate)}）
+  if (hasSignature) {
+    return `
+      <div class="p-4 bg-orange-50/40 border border-orange-200 rounded-xl space-y-2">
+        <div class="text-sm font-black text-gray-800 flex items-center">
+          <i class="fa-solid fa-circle-check text-green-600 mr-1.5"></i>
+          ${escapeHtml(title)}已完成簽名（評核日期：${escapeHtml(safeDate)}）
+        </div>
+        <div class="inline-flex items-center bg-white border border-gray-200 px-4 py-2 rounded-lg shadow-sm text-sm font-bold text-gray-700">
+          <i class="fa-solid fa-signature text-orange-500 mr-2"></i>
+          簽名已留存
+        </div>
       </div>
-      <div class="inline-flex items-center bg-white border border-gray-200 px-4 py-2 rounded-lg shadow-sm text-sm font-bold text-gray-700">
-        <i class="fa-solid fa-signature text-orange-500 mr-2"></i>
-        ${hasSignature ? "簽名已留存" : "簽名紀錄未找到"}
+    `;
+  }
+
+  // 強制流轉略過前一階層時，仍以唯讀訊息顯示，
+  // 不再留下可手寫的簽名板，也不誤顯示為已完成簽名。
+  return `
+    <div class="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
+      <div class="text-sm font-black text-gray-700 flex items-center">
+        <i class="fa-solid fa-lock text-gray-500 mr-1.5"></i>
+        ${escapeHtml(title)}簽名區已鎖定
+      </div>
+      <div class="inline-flex items-center bg-white border border-gray-200 px-4 py-2 rounded-lg text-sm font-bold text-gray-500">
+        <i class="fa-solid fa-signature text-gray-400 mr-2"></i>
+        尚無簽名資料
       </div>
     </div>
   `;
