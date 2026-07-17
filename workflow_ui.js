@@ -97,23 +97,22 @@ const educationScoreRules = [
   {
     id: "edu-score1",
     cardId: "edu-card-1",
-    statusId: "edu-score1-status",
     label: "職能積分得分",
     min: 0,
-    max: 15
+    max: 15,
+    allowedValues: [0, 15]
   },
   {
     id: "edu-score2",
     cardId: "edu-card-2",
-    statusId: "edu-score2-status",
     label: "OJT完成篇數得分",
     min: 0,
-    max: 10
+    max: 10,
+    allowedValues: [0, 10]
   },
   {
     id: "edu-score3",
     cardId: "edu-card-3",
-    statusId: "edu-score3-status",
     label: "每週進度回報得分",
     min: 0,
     max: 5
@@ -121,7 +120,6 @@ const educationScoreRules = [
   {
     id: "edu-score4",
     cardId: "edu-card-4",
-    statusId: "edu-score4-status",
     label: "培訓課程狀況得分",
     min: 0,
     max: 10
@@ -216,6 +214,11 @@ function ensureEducationLabels() {
     const input = document.getElementById(rule.id);
     if (!input) return;
 
+    if (Array.isArray(rule.allowedValues)) {
+      input.type = "hidden";
+      return;
+    }
+
     input.min = String(rule.min);
     input.max = String(rule.max);
     input.step = "1";
@@ -265,6 +268,24 @@ function ensureEducationLabels() {
   }
 
   updateEducationScoreCards();
+}
+
+function setEducationScoreOption(inputId, value) {
+  const input = document.getElementById(inputId);
+
+  if (
+    !input ||
+    input.disabled ||
+    isReadOnlyMode ||
+    !currentUser ||
+    currentUser.role !== "教育中心"
+  ) {
+    return;
+  }
+
+  input.value = String(value);
+  updateEducationScoreCards();
+  updateTotalScore();
 }
 
 function preventInvalidNonNegativeIntegerKey(event) {
@@ -361,33 +382,43 @@ function updateEducationScoreCards() {
   educationScoreRules.forEach((rule) => {
     const input = document.getElementById(rule.id);
     const card = document.getElementById(rule.cardId);
-    const status = document.getElementById(rule.statusId);
 
     if (!input) return;
 
     const rawValue = String(input.value || "").trim();
     const numberValue = Number(rawValue);
-    const valid =
-      rawValue !== "" &&
-      /^\d+$/.test(rawValue) &&
-      Number.isInteger(numberValue) &&
-      numberValue >= rule.min &&
-      numberValue <= rule.max;
+
+    const valid = Array.isArray(rule.allowedValues)
+      ? (
+          rawValue !== "" &&
+          Number.isInteger(numberValue) &&
+          rule.allowedValues.includes(numberValue)
+        )
+      : (
+          rawValue !== "" &&
+          /^\d+$/.test(rawValue) &&
+          Number.isInteger(numberValue) &&
+          numberValue >= rule.min &&
+          numberValue <= rule.max
+        );
 
     if (valid) total += numberValue;
 
-    if (status) {
-      if (rawValue === "") {
-        status.innerText = "尚未填寫";
-        status.className = "text-xs font-bold text-gray-500";
-      } else if (valid) {
-        status.innerText = `已填：${numberValue} / ${rule.max}分`;
-        status.className = "text-xs font-bold text-emerald-700";
-      } else {
-        status.innerText =
-          `格式錯誤：請輸入${rule.min}～${rule.max}整數`;
-        status.className = "text-xs font-bold text-red-600";
-      }
+    if (Array.isArray(rule.allowedValues)) {
+      rule.allowedValues.forEach((optionValue) => {
+        const button = document.getElementById(
+          `${rule.id}-option-${optionValue}`
+        );
+
+        if (!button) return;
+
+        const selected =
+          valid && Number(optionValue) === numberValue;
+
+        button.className = selected
+          ? "education-score-option px-5 py-3 rounded-xl border-2 border-orange-500 brand-bg text-white font-black text-lg shadow-md transition"
+          : "education-score-option px-5 py-3 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-black text-lg hover:border-orange-400 transition";
+      });
     }
 
     if (card) {
@@ -2530,9 +2561,17 @@ function submitForm() {
       return;
     }
 
+    if (![0, 15].includes(Number(values.edu1))) {
+      alert("職能積分得分只能選擇0分或15分。");
+      return;
+    }
+
+    if (![0, 10].includes(Number(values.edu2))) {
+      alert("OJT完成篇數得分只能選擇0分或10分。");
+      return;
+    }
+
     const scoreRules = [
-      ["edu1", 0, 15, "職能積分得分"],
-      ["edu2", 0, 10, "OJT完成篇數得分"],
       ["edu3", 0, 5, "每週進度回報得分"],
       ["edu4", 0, 10, "培訓課程狀況得分"]
     ];
