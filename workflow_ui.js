@@ -3993,7 +3993,7 @@ function renderMonthlyDispatchCandidates_() {
   const candidates = window.monthlyDispatchCandidates || [];
 
   select.innerHTML =
-    '<option value="">-- 請選擇補派人員 --</option>';
+    '<option value="">-- 請選擇尚未建立案件的受評人員 --</option>';
 
   candidates.forEach((item) => {
     const existingTag = item.alreadyExists
@@ -4001,7 +4001,7 @@ function renderMonthlyDispatchCandidates_() {
       : "";
     const needTag = item.needsEvaluation
       ? ""
-      : "｜J欄為否";
+      : "｜J欄為否（需勾選臨時例外）";
     const invalidTag = item.valid
       ? ""
       : `｜資料異常：${item.issue || "請檢查主檔"}`;
@@ -4044,10 +4044,10 @@ function renderMonthlyDispatchRows() {
 
     return `
       <tr class="border-t border-indigo-100 hover:bg-indigo-50/50">
-        <td class="p-3 font-bold text-gray-800">${escapeHtml(item.employeeId || "-")}<br><span class="text-xs text-gray-500">${escapeHtml(item.employeeName || "-")}</span></td>
-        <td class="p-3 font-bold text-gray-700">${escapeHtml(item.storeDisplay || item.currentStore || "-")}</td>
-        <td class="p-3 text-gray-700">${escapeHtml(item.currentArea || "-")}<br><span class="text-xs text-gray-500">${escapeHtml(item.currentDepartment || "-")}</span></td>
         <td class="p-3 font-bold text-indigo-800">${escapeHtml(item.evaluationNo || "尚未建立")}</td>
+        <td class="p-3 text-gray-700">${escapeHtml(item.currentDepartment || "-")}<br><span class="text-xs text-gray-500">${escapeHtml(item.currentArea || "-")}</span></td>
+        <td class="p-3 font-bold text-gray-700">${escapeHtml(item.storeDisplay || item.currentStore || "-")}</td>
+        <td class="p-3 font-bold text-gray-800">${escapeHtml(item.employeeId || "-")}<br><span class="text-xs text-gray-500">${escapeHtml(item.employeeName || "-")}</span></td>
         <td class="p-3 text-gray-700">${escapeHtml(item.flowStatus || "-")}</td>
         <td class="p-3"><span class="inline-block px-2.5 py-1 rounded-full text-xs font-black ${badgeClass}">${escapeHtml(item.stateLabel || "-")}</span></td>
         <td class="p-3 font-bold ${item.moved === "是" ? "text-violet-700" : "text-gray-500"}">${escapeHtml(item.moved || "否")}</td>
