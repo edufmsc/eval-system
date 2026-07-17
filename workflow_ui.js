@@ -1463,8 +1463,12 @@ function loadUnderlings(store) {
 
     if (!select) return;
 
+    const underlingPlaceholder = subordinateCache.length > 0
+      ? `-- 目前共有 ${subordinateCache.length} 筆 --`
+      : "-- 目前無考核表資料 --";
+
     select.innerHTML = `
-      <option value="">-- 待我處理：目前共有 ${subordinateCache.length} 筆 --</option>
+      <option value="">${underlingPlaceholder}</option>
     `;
 
     subordinateCache.forEach((item) => {
@@ -1637,8 +1641,12 @@ function reloadPendingList() {
       pendingFormCache = Array.isArray(list) ? list : [];
 
       if (select) {
+        const pendingPlaceholder = pendingFormCache.length > 0
+          ? `-- 目前共有 ${pendingFormCache.length} 筆 --`
+          : "-- 目前無考核表資料 --";
+
         select.innerHTML = `
-          <option value="">-- 待我處理：目前共有 ${pendingFormCache.length} 筆 --</option>
+          <option value="">${pendingPlaceholder}</option>
         `;
 
         pendingFormCache.forEach((form, index) => {
@@ -1706,13 +1714,13 @@ function loadTrackingList() {
 
       if (window.trackingFormCache.length === 0) {
         select.innerHTML = `
-          <option value="">-- 目前尚無已送出／流程追蹤資料 --</option>
+          <option value="">-- 目前無考核表資料 --</option>
         `;
         return;
       }
 
       select.innerHTML = `
-        <option value="">-- 已送出／流程追蹤：目前共有 ${window.trackingFormCache.length} 筆 --</option>
+        <option value="">-- 目前共有 ${window.trackingFormCache.length} 筆 --</option>
       `;
 
       window.trackingFormCache.forEach(
@@ -1869,8 +1877,12 @@ function loadProgressMonitor() {
 
       if (!select) return;
 
+      const progressPlaceholder = window.adminProgressCache.length > 0
+        ? `-- 共有 ${window.adminProgressCache.length} 筆表單進行中 --`
+        : "-- 目前無表單進行 --";
+
       select.innerHTML = `
-        <option value="">-- 流程追蹤：共有 ${window.adminProgressCache.length} 筆進行中表單 --</option>
+        <option value="">${progressPlaceholder}</option>
       `;
 
       window.adminProgressCache.forEach((form, index) => {
