@@ -267,19 +267,84 @@
               </div>
 
               <div id="edu-card-3" class="bg-white border-2 border-amber-200 rounded-2xl p-5 space-y-4 transition">
-                <div>
-                  <p class="font-black text-gray-800">3. 每週進度回報得分</p>
-                  <p class="text-sm font-bold text-gray-600 mt-2 leading-6">回報錯誤／未回報，一次扣1分。</p>
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="font-black text-gray-800">3. 每週進度回報得分</p>
+                    <p class="text-sm font-bold text-gray-600 mt-2 leading-6">回報錯誤／未回報，每次扣1分。</p>
+                  </div>
+                  <span class="shrink-0 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-black">滿分5分</span>
                 </div>
-                <input type="number" id="edu-score3" min="0" max="5" step="1" inputmode="numeric" onkeydown="return preventInvalidNonNegativeIntegerKey(event)" oninput="handleEducationScoreInput(this, 5)" onblur="handleEducationScoreInput(this, 5)" class="w-full p-3 border-2 border-gray-300 rounded-xl text-xl font-black text-center text-amber-700 bg-white focus:outline-none focus:ring-2 focus:ring-amber-300" placeholder="請輸入扣分後得分">
+
+                <input type="hidden" id="edu-score3" value="5">
+
+                <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-4 space-y-3">
+                  <p class="text-sm font-black text-gray-700">回報錯誤／未回報次數</p>
+                  <div class="flex items-center justify-center gap-4">
+                    <button type="button" id="edu-weekly-minus" onclick="changeEducationPenalty('weekly', -1)" class="w-11 h-11 rounded-full border-2 border-amber-300 bg-white text-amber-800 text-xl font-black hover:bg-amber-100 transition">－</button>
+                    <div class="min-w-[110px] text-center">
+                      <p class="text-3xl font-black text-amber-700"><span id="edu-weekly-count">0</span><span class="text-base ml-1">次</span></p>
+                    </div>
+                    <button type="button" id="edu-weekly-plus" onclick="changeEducationPenalty('weekly', 1)" class="w-11 h-11 rounded-full border-2 border-amber-300 bg-white text-amber-800 text-xl font-black hover:bg-amber-100 transition">＋</button>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="bg-red-50 border border-red-200 rounded-xl p-3 text-center">
+                    <p class="text-xs font-bold text-red-600">本項扣分</p>
+                    <p class="text-xl font-black text-red-700">-<span id="edu-weekly-deduction">0</span>分</p>
+                  </div>
+                  <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
+                    <p class="text-xs font-bold text-emerald-700">實得分數</p>
+                    <p class="text-xl font-black text-emerald-800"><span id="edu-weekly-final">5</span> / 5分</p>
+                  </div>
+                </div>
               </div>
 
               <div id="edu-card-4" class="bg-white border-2 border-amber-200 rounded-2xl p-5 space-y-4 transition">
-                <div>
-                  <p class="font-black text-gray-800">4. 培訓課程狀況得分</p>
-                  <p class="text-sm font-bold text-gray-600 mt-2 leading-6">晚到／曠課一次扣1分，作業遲繳1天扣1分。</p>
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="font-black text-gray-800">4. 培訓課程狀況得分</p>
+                    <p class="text-sm font-bold text-gray-600 mt-2 leading-6">晚到／曠課每次扣1分；作業每遲繳1天扣1分。</p>
+                  </div>
+                  <span class="shrink-0 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-black">滿分10分</span>
                 </div>
-                <input type="number" id="edu-score4" min="0" max="10" step="1" inputmode="numeric" onkeydown="return preventInvalidNonNegativeIntegerKey(event)" oninput="handleEducationScoreInput(this, 10)" onblur="handleEducationScoreInput(this, 10)" class="w-full p-3 border-2 border-gray-300 rounded-xl text-xl font-black text-center text-amber-700 bg-white focus:outline-none focus:ring-2 focus:ring-amber-300" placeholder="請輸入扣分後得分">
+
+                <input type="hidden" id="edu-score4" value="10">
+
+                <div id="edu-training-existing-note" class="hidden bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm font-bold text-blue-800">
+                  既有資料目前共扣 <span id="edu-training-existing-deduction">0</span> 分；舊資料未保存扣分類別。調整下方任一項後，將重新計算。
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-4 space-y-3">
+                    <p class="text-sm font-black text-gray-700">晚到／曠課次數</p>
+                    <div class="flex items-center justify-center gap-3">
+                      <button type="button" id="edu-attendance-minus" onclick="changeEducationPenalty('attendance', -1)" class="w-10 h-10 rounded-full border-2 border-amber-300 bg-white text-amber-800 text-lg font-black hover:bg-amber-100 transition">－</button>
+                      <p class="min-w-[72px] text-center text-2xl font-black text-amber-700"><span id="edu-attendance-count">0</span><span class="text-sm ml-1">次</span></p>
+                      <button type="button" id="edu-attendance-plus" onclick="changeEducationPenalty('attendance', 1)" class="w-10 h-10 rounded-full border-2 border-amber-300 bg-white text-amber-800 text-lg font-black hover:bg-amber-100 transition">＋</button>
+                    </div>
+                  </div>
+
+                  <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-4 space-y-3">
+                    <p class="text-sm font-black text-gray-700">作業遲繳天數</p>
+                    <div class="flex items-center justify-center gap-3">
+                      <button type="button" id="edu-homework-minus" onclick="changeEducationPenalty('homework', -1)" class="w-10 h-10 rounded-full border-2 border-amber-300 bg-white text-amber-800 text-lg font-black hover:bg-amber-100 transition">－</button>
+                      <p class="min-w-[72px] text-center text-2xl font-black text-amber-700"><span id="edu-homework-count">0</span><span class="text-sm ml-1">天</span></p>
+                      <button type="button" id="edu-homework-plus" onclick="changeEducationPenalty('homework', 1)" class="w-10 h-10 rounded-full border-2 border-amber-300 bg-white text-amber-800 text-lg font-black hover:bg-amber-100 transition">＋</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="bg-red-50 border border-red-200 rounded-xl p-3 text-center">
+                    <p class="text-xs font-bold text-red-600">本項扣分</p>
+                    <p class="text-xl font-black text-red-700">-<span id="edu-training-deduction">0</span>分</p>
+                  </div>
+                  <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
+                    <p class="text-xs font-bold text-emerald-700">實得分數</p>
+                    <p class="text-xl font-black text-emerald-800"><span id="edu-training-final">10</span> / 10分</p>
+                  </div>
+                </div>
               </div>
             </div>
 
