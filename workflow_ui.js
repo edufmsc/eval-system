@@ -3898,6 +3898,66 @@ function normalizeRocMonthForDispatch_(value) {
   return `${year}/${String(month).padStart(2, "0")}`;
 }
 
+function compareRocMonthsForDispatch_(left, right) {
+  const leftText = normalizeRocMonthForDispatch_(left);
+  const rightText = normalizeRocMonthForDispatch_(right);
+  if (!leftText || !rightText) return 0;
+  const [leftYear, leftMonth] = leftText.split("/").map(Number);
+  const [rightYear, rightMonth] = rightText.split("/").map(Number);
+  return (leftYear * 12 + leftMonth) - (rightYear * 12 + rightMonth);
+}
+
+function isFutureDispatchMonth_(month) {
+  return compareRocMonthsForDispatch_(month, getCurrentRocMonthForDispatch_()) > 0;
+}
+
+function getMonthlyDispatchFutureOverride_() {
+  return Boolean(document.getElementById("dispatch-allow-future")?.checked);
+}
+
+function updateMonthlyDispatchFutureControls_() {
+  const month = normalizeRocMonthForDispatch_(getTrimmedValue("dispatch-admin-month"));
+  const isFuture = Boolean(window.monthlyDispatchDashboard?.isFutureMonth || isFutureDispatchMonth_(month));
+  const allowFuture = getMonthlyDispatchFutureOverride_();
+  const warning = document.getElementById("dispatch-future-warning");
+  const warningText = document.getElementById("dispatch-future-warning-text");
+  const buttons = [
+    document.getElementById("btn-create-missing-dispatch"),
+    document.getElementById("btn-create-single-dispatch")
+  ];
+
+  if (warning) warning.classList.toggle("hidden", !isFuture);
+  if (warningText && isFuture) {
+    warningText.innerText = `您正在查看 ${month}。建立後會立即出現在門市店主管待辦清單，不會等到 ${month} 才派發。`;
+  }
+
+  buttons.forEach((button) => {
+    if (!button) return;
+    const disabled = isFuture && !allowFuture;
+    button.disabled = disabled;
+    button.classList.toggle("opacity-50", disabled);
+    button.classList.toggle("cursor-not-allowed", disabled);
+  });
+}
+
+function requireFutureDispatchConfirmation_(month) {
+  if (!isFutureDispatchMonth_(month)) return true;
+
+  if (!getMonthlyDispatchFutureOverride_()) {
+    alert(
+      `目前選擇的是未來月份 ${month}。\n` +
+      "請先勾選「允許提前建立未來月份案件」。"
+    );
+    return false;
+  }
+
+  return confirm(
+    `您正在提前建立 ${month} 的考核案件。\n\n` +
+    "建立後會立即出現在門市店主管待辦清單，不會等到該月份才派發。\n\n" +
+    "確定繼續嗎？"
+  );
+}
+
 function loadMonthlyDispatchDashboard() {
   configureMonthlyDispatchAdminVisibility();
 
@@ -3940,6 +4000,8 @@ function loadMonthlyDispatchDashboard() {
       }
 
       window.monthlyDispatchDashboard = result;
+      const futureCheckbox = document.getElementById("dispatch-allow-future");
+      if (futureCheckbox) futureCheckbox.checked = false;
       window.monthlyDispatchRows = Array.isArray(result.rows)
         ? result.rows
         : [];
@@ -3952,6 +4014,7 @@ function loadMonthlyDispatchDashboard() {
       updateMonthlyDispatchStats_(result.stats || {});
       renderMonthlyDispatchCandidates_();
       renderMonthlyDispatchRows();
+      updateMonthlyDispatchFutureControls_();
 
       const summary = document.getElementById(
         "dispatch-admin-summary"
@@ -4000,8 +4063,11 @@ function renderMonthlyDispatchCandidates_() {
       ? "｜該月已有案件"
       : "";
     const needTag = item.needsEvaluation
-      ? ""
+      ? "｜J欄為是"
       : "｜J欄為否（需勾選臨時例外）";
+    const roleTag = item.roleDisplay
+      ? `｜${item.roleDisplay}`
+      : "";
     const invalidTag = item.valid
       ? ""
       : `｜資料異常：${item.issue || "請檢查主檔"}`;
@@ -4010,7 +4076,7 @@ function renderMonthlyDispatchCandidates_() {
       "beforeend",
       `<option value="${escapeHtml(item.employeeId)}" ${
         item.alreadyExists || !item.valid ? "disabled" : ""
-      }>${escapeHtml(item.employeeId)}－${escapeHtml(item.employeeName)}｜${escapeHtml(item.storeDisplay || item.storeCode || "未設定店別")}${escapeHtml(existingTag + needTag + invalidTag)}</option>`
+      }>${escapeHtml(item.employeeId)}－${escapeHtml(item.employeeName)}｜${escapeHtml(item.storeDisplay || item.storeCode || "未設定店別")}${escapeHtml(roleTag + existingTag + needTag + invalidTag)}</option>`
     );
   });
 }
@@ -4069,7 +4135,15 @@ function createMissingMonthlyDispatches() {
     return;
   }
 
-  if (!confirm(`確定要補齊 ${month} 的缺漏案件嗎？\n同一人同月份已有R0案件時不會重複建立。`)) {
+  if (!requireFutureDispatchConfirmation_(month)) {
+    return;
+  }
+
+  if (
+    !isFutureDispatchMonth_(month) &&
+    !confirm(`確定要補齊 ${month} 的缺漏案件嗎？
+同一人同月份已有R0案件時不會重複建立。`)
+  ) {
     return;
   }
 
@@ -4077,6 +4151,7 @@ function createMissingMonthlyDispatches() {
     "createMonthlyDispatchMissing",
     {
       rocMonth: month,
+      allowFuture: getMonthlyDispatchFutureOverride_(),
       empId: currentUser.empId
     },
     (result) => {
@@ -4133,7 +4208,14 @@ function createSingleMonthlyDispatch() {
     return;
   }
 
-  if (!confirm(`確定為 ${employeeId} 建立 ${month} 的R0考核案件嗎？`)) {
+  if (!requireFutureDispatchConfirmation_(month)) {
+    return;
+  }
+
+  if (
+    !isFutureDispatchMonth_(month) &&
+    !confirm(`確定為 ${employeeId} 建立 ${month} 的R0考核案件嗎？`)
+  ) {
     return;
   }
 
@@ -4143,6 +4225,7 @@ function createSingleMonthlyDispatch() {
       rocMonth: month,
       targetEmployeeId: employeeId,
       allowOverride: override,
+      allowFuture: getMonthlyDispatchFutureOverride_(),
       empId: currentUser.empId
     },
     (result) => {
