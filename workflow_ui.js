@@ -2266,18 +2266,41 @@ function renderCompletedLaterSections(form) {
     form.currentStatus
   );
 
-  // 到達區主管或更後面的流程時，教育中心區塊必須出現並鎖定。
+  // 表單被退回前段時，不能只看「目前狀態」判斷要顯示哪些區塊。
+  // 只要後續任一階層已留下內容，就代表流程曾經走到該階層，
+  // 所有更前面的區塊都必須累積顯示並維持唯讀。
+  const educationCompleted = hasEducationContent(form);
+  const areaCompleted = hasAreaContent(form);
+  const studentCompleted = Boolean(form.studentSig);
+  const vpCompleted = Boolean(
+    form.vpSig || form.vpComment
+  );
+  const gmCompleted = Boolean(
+    form.gmSig || form.gmComment
+  );
+
+  // 到達區主管或更後面的流程，或任何更後階層已有內容時，
+  // 教育中心區塊都必須出現。若教育中心曾被強制略過，
+  // 欄位會以空白唯讀狀態呈現，不會被誤認為可重新填寫。
   if (
     stageIndex > 1 ||
-    hasEducationContent(form)
+    educationCompleted ||
+    areaCompleted ||
+    studentCompleted ||
+    vpCompleted ||
+    gmCompleted
   ) {
     showEduSectionReadOnly(form, form.evalDate);
   }
 
-  // 到達受評人員或更後面的流程時，區主管區塊必須出現並鎖定。
+  // 到達受評人員或更後面的流程，或更後階層已有內容時，
+  // 區主管區塊必須出現並鎖定。
   if (
     stageIndex > 2 ||
-    hasAreaContent(form)
+    areaCompleted ||
+    studentCompleted ||
+    vpCompleted ||
+    gmCompleted
   ) {
     showAreaSectionReadOnly(
       form.areaComment || "",
@@ -2287,18 +2310,23 @@ function renderCompletedLaterSections(form) {
     );
   }
 
-  // 到達營業副總或更後面的流程時，受評人員確認區必須顯示唯讀。
+  // 到達營業副總或更後面的流程，或更後階層已有內容時，
+  // 受評人員確認區必須顯示唯讀。
   if (
     stageIndex > 3 ||
-    Boolean(form.studentSig)
+    studentCompleted ||
+    vpCompleted ||
+    gmCompleted
   ) {
     showStudentSectionReadOnly(form);
   }
 
-  // 到達總經理或更後面的流程時，營業副總區塊必須顯示唯讀。
+  // 到達總經理或更後面的流程，或總經理已有內容時，
+  // 營業副總區塊必須顯示唯讀。
   if (
     stageIndex > 4 ||
-    Boolean(form.vpSig || form.vpComment)
+    vpCompleted ||
+    gmCompleted
   ) {
     showVpSectionReadOnly(form);
   }
@@ -2306,7 +2334,7 @@ function renderCompletedLaterSections(form) {
   // 結案、待產PDF或已有總經理資料時，顯示總經理唯讀區塊。
   if (
     stageIndex > 5 ||
-    Boolean(form.gmSig || form.gmComment)
+    gmCompleted
   ) {
     showGmSectionReadOnly(form);
   }
@@ -2613,8 +2641,22 @@ function hasEducationContent(form) {
   return Boolean(
     edu.sig ||
     edu.comment ||
-    [edu.score1, edu.score2, edu.score3, edu.score4]
-      .some((value) => String(value ?? "").trim() !== "")
+    [
+      edu.score1,
+      edu.score2,
+      edu.score3,
+      edu.score4,
+      edu.accum,
+      edu.ojt
+    ].some(hasStoredValue_)
+  );
+}
+
+function hasStoredValue_(value) {
+  return (
+    value !== null &&
+    value !== undefined &&
+    String(value).trim() !== ""
   );
 }
 
@@ -2664,10 +2706,14 @@ function showEduSectionReadOnly(form, date) {
   setValue("edu-accum", edu.accum);
   setValue("edu-ojt", edu.ojt);
   setValue("edu-comment", edu.comment || "");
-  loadEducationPenaltyFromScores(
+
+  // 唯讀模式不能把空白教育中心分數誤算成預設5分與10分。
+  // 有既有分數時照原值帶出；強制略過教育中心時則顯示空白唯讀。
+  loadEducationPenaltyReadOnly_(
     edu.score3,
     edu.score4
   );
+
   updateEducationScoreCards();
   handleEducationCountInput(
     document.getElementById("edu-accum"),
@@ -2677,17 +2723,172 @@ function showEduSectionReadOnly(form, date) {
     document.getElementById("edu-ojt"),
     "edu-ojt-status"
   );
+  setEducationCountReadOnlyStatus_(
+    "edu-accum",
+    "edu-accum-status"
+  );
+  setEducationCountReadOnlyStatus_(
+    "edu-ojt",
+    "edu-ojt-status"
+  );
 
   setSectionInputsDisabled("section-edu", true);
-  updateEducationPenaltyCalculator();
 
-  document.getElementById(
+  const signatureBlock = document.getElementById(
     "sig-block-edu"
-  ).innerHTML = getSigHTML(
-    "教育中心成員",
-    edu.sig,
-    date
   );
+
+  if (signatureBlock) {
+    signatureBlock.innerHTML = getSigHTML(
+      "教育中心成員",
+      edu.sig,
+      date
+    );
+  }
+}
+
+/**
+ * 唯讀載入教育中心第3、4項分數。
+ * 空白值保持空白，不套用新案件的預設滿分。
+ */
+function setEducationCountReadOnlyStatus_(
+  inputId,
+  statusId
+) {
+  const input = document.getElementById(inputId);
+  const status = document.getElementById(statusId);
+
+  if (!input || !status) return;
+
+  if (String(input.value || "").trim() !== "") {
+    return;
+  }
+
+  status.innerText = "尚無資料";
+  status.className =
+    "text-xs font-bold text-gray-500 mt-2";
+}
+
+function loadEducationPenaltyReadOnly_(
+  score3Value,
+  score4Value
+) {
+  const score3Text = String(
+    score3Value === null || score3Value === undefined
+      ? ""
+      : score3Value
+  ).trim();
+
+  const score4Text = String(
+    score4Value === null || score4Value === undefined
+      ? ""
+      : score4Value
+  ).trim();
+
+  const score3 = Number(score3Text);
+  const score4 = Number(score4Text);
+
+  const score3Valid =
+    score3Text !== "" &&
+    Number.isInteger(score3) &&
+    score3 >= 0 &&
+    score3 <= 5;
+
+  const score4Valid =
+    score4Text !== "" &&
+    Number.isInteger(score4) &&
+    score4 >= 0 &&
+    score4 <= 10;
+
+  const weeklyCount = score3Valid
+    ? 5 - score3
+    : null;
+
+  const trainingDeduction = score4Valid
+    ? 10 - score4
+    : null;
+
+  window.eduWeeklyPenaltyCount =
+    weeklyCount === null ? 0 : weeklyCount;
+  window.eduAttendancePenaltyCount = 0;
+  window.eduHomeworkLateDays = 0;
+  window.eduTrainingLegacyDeduction =
+    trainingDeduction === null
+      ? 0
+      : trainingDeduction;
+  window.eduTrainingPenaltyTouched = !score4Valid;
+
+  setValue(
+    "edu-score3",
+    score3Valid ? score3 : ""
+  );
+  setValue(
+    "edu-score4",
+    score4Valid ? score4 : ""
+  );
+
+  setText(
+    "edu-weekly-count",
+    score3Valid
+      ? (weeklyCount >= 5 ? "5+" : weeklyCount)
+      : "—"
+  );
+  setText(
+    "edu-weekly-deduction",
+    score3Valid ? weeklyCount : "—"
+  );
+  setText(
+    "edu-weekly-final",
+    score3Valid ? score3 : "—"
+  );
+
+  setText("edu-attendance-count", score4Valid ? 0 : "—");
+  setText("edu-homework-count", score4Valid ? 0 : "—");
+  setText(
+    "edu-training-deduction",
+    score4Valid ? trainingDeduction : "—"
+  );
+  setText(
+    "edu-training-final",
+    score4Valid ? score4 : "—"
+  );
+  setText(
+    "edu-training-existing-deduction",
+    score4Valid ? trainingDeduction : "—"
+  );
+
+  const legacyNote = document.getElementById(
+    "edu-training-existing-note"
+  );
+
+  if (legacyNote) {
+    legacyNote.classList.toggle(
+      "hidden",
+      !score4Valid || trainingDeduction === 0
+    );
+  }
+
+  [
+    "edu-weekly-minus",
+    "edu-weekly-plus",
+    "edu-attendance-minus",
+    "edu-attendance-plus",
+    "edu-homework-minus",
+    "edu-homework-plus"
+  ].forEach((id) => {
+    const button = document.getElementById(id);
+
+    if (!button) return;
+
+    button.disabled = true;
+    button.classList.add(
+      "opacity-40",
+      "cursor-not-allowed"
+    );
+  });
+
+  updateEducationScoreCards();
+  updateTotalScore();
 }
 
 function showAreaSectionReadOnly(
