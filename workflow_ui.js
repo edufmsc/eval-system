@@ -1678,9 +1678,16 @@ function loadTrackingList() {
       "tracking-select-box"
     );
 
-  // 總經理不使用「已送出／流程追蹤」。
-  // 總經理以「待我處理＋全公司進行中監控＋歷史資料」查看。
-  if (currentUser.role === "總經理") {
+  // 「已送出／流程追蹤」保留給需要收回或追蹤本人送出資料的角色。
+  // 區主管、營業副總與總經理改由「進行中流程監控（唯讀）」
+  // 查看其管轄範圍內全部尚未結案的月考核表。
+  const trackingRoles = [
+    "店長",
+    "學員",
+    "教育中心"
+  ];
+
+  if (!trackingRoles.includes(currentUser.role)) {
     if (trackingBox) {
       trackingBox.classList.add("hidden");
     }
@@ -1797,27 +1804,42 @@ function onTrackingFormChange() {
 
 
 function loadProgressMonitor() {
-  const roles = ["教育中心", "總經理"];
+  if (!currentUser) return;
 
-  const progressBox =
+  const roles = [
+    "教育中心",
+    "區主管",
+    "營業副總",
+    "總經理"
+  ];
+
+  let progressBox =
     document.getElementById(
       "admin-progress-box"
     );
 
-  // 藍色全公司流程監控只提供教育中心與總經理。
-  // 門市店主管、區主管、受評人員及營業副總使用自己的流程追蹤區即可。
+  // 店長與受評人員不顯示管理階層的流程監控。
   if (!roles.includes(currentUser.role)) {
     if (progressBox) {
       progressBox.classList.add("hidden");
     }
+
+    window.adminProgressCache = [];
     return;
   }
 
-  if (progressBox) {
-    progressBox.classList.remove("hidden");
-  }
+  const titleMap = {
+    "區主管": "轄區進行中流程監控（唯讀）",
+    "營業副總": "所屬處別進行中流程監控（唯讀）",
+    "總經理": "全公司進行中流程監控（唯讀）",
+    "教育中心": "全公司進行中流程監控（唯讀）"
+  };
 
-  if (!document.getElementById("admin-progress-box")) {
+  const monitorTitle =
+    titleMap[currentUser.role] ||
+    "進行中流程監控（唯讀）";
+
+  if (!progressBox) {
     const reviewerBox = document.getElementById(
       "reviewer-select-box"
     );
@@ -1830,11 +1852,9 @@ function loadProgressMonitor() {
 
       box.innerHTML = `
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <label class="block text-base font-black text-blue-700">
+          <label id="admin-progress-title" class="block text-base font-black text-blue-700">
             <i class="fa-solid fa-eye mr-1"></i>
-            ${currentUser.role === "總經理"
-              ? "全公司進行中流程監控（唯讀）"
-              : "進行中流程監控（預設唯讀）"}
+            ${monitorTitle}
           </label>
           <div id="admin-mode-buttons" class="${currentUser.role === "教育中心" ? "" : "hidden"} flex gap-2">
             <button type="button" id="btn-enter-admin-mode" onclick="toggleAdminManagementMode(true)" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold">
@@ -1856,7 +1876,34 @@ function loadProgressMonitor() {
         box,
         reviewerBox.nextSibling
       );
+
+      progressBox = box;
     }
+  }
+
+  if (!progressBox) return;
+
+  progressBox.classList.remove("hidden");
+
+  const titleElement = document.getElementById(
+    "admin-progress-title"
+  );
+
+  if (titleElement) {
+    titleElement.innerHTML =
+      '<i class="fa-solid fa-eye mr-1"></i>' +
+      monitorTitle;
+  }
+
+  const adminModeButtons = document.getElementById(
+    "admin-mode-buttons"
+  );
+
+  if (adminModeButtons) {
+    adminModeButtons.classList.toggle(
+      "hidden",
+      currentUser.role !== "教育中心"
+    );
   }
 
   callAPI(
@@ -1877,9 +1924,10 @@ function loadProgressMonitor() {
 
       if (!select) return;
 
-      const progressPlaceholder = window.adminProgressCache.length > 0
-        ? `-- 共有 ${window.adminProgressCache.length} 筆表單進行中 --`
-        : "-- 目前無表單進行 --";
+      const progressPlaceholder =
+        window.adminProgressCache.length > 0
+          ? `-- 共有 ${window.adminProgressCache.length} 筆表單進行中 --`
+          : "-- 目前無表單進行 --";
 
       select.innerHTML = `
         <option value="">${progressPlaceholder}</option>
@@ -3969,7 +4017,7 @@ function getNumericValue(id) {
 
 
 /* ---------------------------------------------------------------
- * 教育中心／總經理：月考核派發管理
+ * 教育中心專屬：月考核派發管理
  * ------------------------------------------------------------- */
 
 function configureMonthlyDispatchAdminVisibility() {
@@ -3981,14 +4029,13 @@ function configureMonthlyDispatchAdminVisibility() {
 
   const allowed = Boolean(
     currentUser &&
-    ["教育中心", "總經理"].includes(currentUser.role)
+    currentUser.role === "教育中心"
   );
 
   box.classList.toggle("hidden", !allowed);
 
   if (!allowed) return;
 
-  const isEducation = currentUser.role === "教育中心";
   const actions = document.getElementById(
     "dispatch-admin-actions"
   );
@@ -3997,13 +4044,12 @@ function configureMonthlyDispatchAdminVisibility() {
   );
 
   if (actions) {
-    actions.classList.toggle("hidden", !isEducation);
+    actions.classList.remove("hidden");
   }
 
   if (note) {
-    note.innerText = isEducation
-      ? "可依月份查看派發狀況、補齊缺漏、單一人員補派及同步調店。"
-      : "總經理可查看各月份派發統計與案件狀況；管理按鈕僅教育中心可使用。";
+    note.innerText =
+      "可依月份查看派發狀況、補齊缺漏、單一人員補派及同步調店。";
   }
 
   const monthInput = document.getElementById(
@@ -4109,7 +4155,7 @@ function loadMonthlyDispatchDashboard() {
 
   if (
     !currentUser ||
-    !["教育中心", "總經理"].includes(currentUser.role)
+    currentUser.role !== "教育中心"
   ) {
     return;
   }
